@@ -1,4 +1,6 @@
 #include "Domains/PCG/McpPCGPrivate.h"
+#include "Foundation/BridgeHelpers/Properties/McpNestedPropPath.h"
+#include "Foundation/Reflection/McpPropertyReflection.h"
 
 #if MCP_HAS_PCG
 namespace McpPCGHandlers
@@ -70,15 +72,31 @@ bool ApplySettingsObject(UPCGSettings* Settings, const TSharedPtr<FJsonObject>& 
     for (const auto& Pair : SettingsObject->Values)
     {
         const FString FieldName(Pair.Key.Len(), *Pair.Key);
-        FProperty* Property = Settings->GetClass()->FindPropertyByName(FName(*FieldName));
-        if (!Property)
+        void* Container = nullptr;
+        FString ResolvedPath;
+        FProperty* Property = McpResolvePropertyPath(Settings, FieldName, Container, ResolvedPath, OutError);
+        if (!Property) return false;
+        TArray<FString> Segments;
+        ResolvedPath.ParseIntoArray(Segments, TEXT("."), true);
+        FString Prefix;
+        for (int32 Index = 0; Index + 1 < Segments.Num(); ++Index)
         {
-            OutError = FString::Printf(TEXT("PCG settings property '%s' was not found on '%s'."), *FieldName, *Settings->GetClass()->GetName());
-            return false;
+            Prefix += (Prefix.IsEmpty() ? TEXT("") : TEXT(".")) + Segments[Index];
+            void* PrefixContainer = nullptr;
+            FString Ignored;
+            FProperty* PrefixProperty = McpResolvePropertyPath(Settings, Prefix, PrefixContainer, Ignored, OutError);
+            if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(PrefixProperty))
+            {
+                UObject* Object = ObjectProperty->GetObjectPropertyValue_InContainer(PrefixContainer);
+                if (Object && Object != Settings && !Object->IsIn(Settings))
+                {
+                    OutError = TEXT("Nested PCG settings writes may only traverse objects owned by these settings, not shared assets or CDOs.");
+                    return false;
+                }
+            }
         }
-
         FString ApplyError;
-        if (!ApplyJsonValueToProperty(Settings, Property, Pair.Value, ApplyError))
+        if (!::ApplyJsonValueToProperty(Container, Property, Pair.Value, ApplyError))
         {
             OutError = FString::Printf(TEXT("Failed to apply PCG settings property '%s': %s"), *FieldName, *ApplyError);
             return false;

@@ -71,6 +71,7 @@ bool HandleSetSplinePointTangents(
             TEXT("arriveTangent or leaveTangent is required"), nullptr, TEXT("INVALID_ARGUMENT"));
         return true;
     }
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 
@@ -95,6 +96,7 @@ bool HandleSetSplinePointRotation(
 
     FRotator Rotation = ExtractRotatorField(Payload, TEXT("pointRotation"), FRotator::ZeroRotator);
     SplineComp->SetRotationAtSplinePoint(PointIndex, Rotation, ESplineCoordinateSpace::Local, true);
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 
@@ -119,6 +121,7 @@ bool HandleSetSplinePointScale(
 
     FVector Scale = ExtractVectorField(Payload, TEXT("pointScale"), FVector::OneVector);
     SplineComp->SetScaleAtSplinePoint(PointIndex, Scale, true);
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 
@@ -163,6 +166,7 @@ bool HandleSetSplineType(
         }
     }
 
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 

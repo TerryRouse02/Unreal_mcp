@@ -1,6 +1,7 @@
 #include "Transport/Connection/McpConnectionManagerPrivate.h"
 
 #include "Core/Security/McpPrequeueGate.h"
+#include "Core/Requests/McpRequestOriginRegistry.h"
 #include "Foundation/McpCapabilityPrincipal.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/App.h"
@@ -215,6 +216,9 @@ bool FMcpConnectionManager::AuthorizeAutomationRequest(
 	const FMcpAuthorizationDecision Decision = McpPrequeueGate::Authorize(Request);
 	if (Decision.bAllowed)
 	{
+		FMcpRequestOriginRegistry& Origins = FMcpRequestOriginRegistry::Get();
+		Origins.Record(RequestId, ERequestOrigin::WebSocket);
+		if (Principal.bAuthenticated) Origins.RecordPrincipal(RequestId, Principal.Identity);
 		return true;
 	}
 

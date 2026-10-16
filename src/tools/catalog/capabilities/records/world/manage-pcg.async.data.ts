@@ -30,6 +30,8 @@ export const PCG_ASYNC_RECORDS: readonly CapabilityRecordSource[] = [
     exampleOutput: { success: true, message: 'PCG graph execution started', taskId: 5231 },
     outputProps: {
       taskId: { type: 'number', description: 'Opaque numeric scheduling receipt for the PCG task.' },
+      operationId: { type: 'string', description: 'Optional authenticated per-component operation correlation ID on supported engine versions; not an MCP task ID.' },
+      operationTracking: { type: 'boolean', description: 'Native completion observation is available for this call; false does not change the legacy scheduling semantics.' },
     },
   }),
 ];

@@ -1,4 +1,9 @@
 #include "Domains/PCG/McpPCGPrivate.h"
+#include "Domains/PCG/Discovery/McpPCGRead.h"
+#include "Domains/PCG/Editor/McpPCGEditor.h"
+#include "Domains/PCG/Editing/McpPCGMutations.h"
+#include "Domains/PCG/Parameters/McpPCGParameters.h"
+#include "Domains/PCG/Execution/McpPCGExecution.h"
 
 bool UEngineWireSubsystem::HandleManagePCGAction(
     const FString& RequestId, const FString& Action,
@@ -34,7 +39,11 @@ bool UEngineWireSubsystem::HandleManagePCGAction(
         return true;
     }
 
+    if (McpPCGHandlers::HandlePCGDiscovery(this, RequestId, SubAction, Payload, Socket)) return true;
+    if (McpPCGHandlers::HandlePCGExecution(this, RequestId, SubAction, Payload, Socket)) return true;
+
     const bool bSave = GetJsonBoolField(Payload, TEXT("save"), true);
+    if (McpPCGHandlers::HandlePCGParameters(this, RequestId, SubAction, Payload, Socket, bSave)) return true;
 
     if (SubAction == TEXT("create_pcg_graph"))
     {
@@ -70,6 +79,17 @@ bool UEngineWireSubsystem::HandleManagePCGAction(
     {
         SendAutomationError(Socket, RequestId, Error, TEXT("ASSET_NOT_FOUND"));
         return true;
+    }
+
+    if (SubAction == TEXT("move_pcg_node") || SubAction == TEXT("disconnect_pcg_pins") || SubAction == TEXT("remove_pcg_node") ||
+        SubAction == TEXT("batch_edit_pcg_graph") || SubAction == TEXT("batch_edit_pcg_graph_destructive"))
+    {
+        return McpPCGHandlers::HandlePCGEditOperations(this, RequestId, SubAction, Payload, Socket, bSave, Graph, GraphPath);
+    }
+
+    if (SubAction == TEXT("sync_pcg_editor_graph"))
+    {
+        return McpPCGHandlers::HandleSyncPCGEditor(this, RequestId, Payload, Socket, bSave, Graph, GraphPath);
     }
 
     if (SubAction == TEXT("add_pcg_node") || McpPCGHandlers::IsPCGNodeCreationAction(SubAction))

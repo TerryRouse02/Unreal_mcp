@@ -11,12 +11,30 @@
 import type { CapabilityRecordSource } from '../../model.js';
 import { buildWorldRecord } from './builder.js';
 import { P } from './properties.js';
+import { withPCGEditContract } from './manage-pcg.edit-contract.js';
 
 const F = 'pcg';
 const PLUGIN = ['PCG'] as const;
 const PCG_SAVE = { type: 'boolean', description: 'Save the PCG graph asset after the edit (default true).' };
 
 export const PCG_GRAPH_RECORDS: readonly CapabilityRecordSource[] = [
+  buildWorldRecord({
+    parentTool: 'manage_pcg', action: 'sync_pcg_editor_graph', plugins: PLUGIN, family: F,
+    summary: 'Synchronize an existing PCG editor representation using native schema-created nodes and public virtual APIs.',
+    topics: ['repair pcg editor graph', 'sync pcg nodes', 'missing pcg editor node'],
+    whenToUse: ['Backend edits left the graph editor inconsistent.'], whenNotToUse: ['Only inspect state; use get_pcg_editor_graph.'],
+    inputProps: { graphPath: P.graphPath, save: PCG_SAVE,
+      openEditor: { type: 'boolean', description: 'Open the graph editor when no representation exists, default false.' },
+      expectedGraphRevision: { type: 'string', description: 'Optional authored graph revision; stale edits are refused.' } },
+    required: ['graphPath'], effect: 'write', costLatency: 'interactive', costResources: 'medium',
+    outputProps: { revision: { type: 'string', description: 'Authored graph revision after synchronization.' },
+      consistent: { type: 'boolean', description: 'Visible model nodes, pins, positions and edges map consistently.' },
+      available: { type: 'boolean', description: 'An editor representation exists.' },
+      committed: { type: 'boolean', description: 'In-memory synchronization committed.' },
+      saved: { type: 'boolean', description: 'The graph asset was saved.' },
+      rolledBack: { type: 'boolean', description: 'Explicit failure recovery restored the previous state.' } },
+    exampleInput: { action: 'sync_pcg_editor_graph', graphPath: '/Game/PCG/Graph', save: false },
+  }),
   buildWorldRecord({
     parentTool: 'manage_pcg', action: 'create_pcg_graph', plugins: PLUGIN,
     topics: ['pcg graph', 'procedural generation', 'pcg asset', 'new pcg graph'],
@@ -34,7 +52,7 @@ export const PCG_GRAPH_RECORDS: readonly CapabilityRecordSource[] = [
   buildWorldRecord({
     parentTool: 'manage_pcg', action: 'add_pcg_node', plugins: PLUGIN,
     family: F, summary: 'Add a node to a PCG graph by settings class or alias.', whenToUse: ['A node must be added to a PCG graph.'], whenNotToUse: ['Pins must be connected; use connect_pcg_pins.'],
-    inputProps: { nodeName: P.nodeName, x: P.x, y: P.y, posX: P.posX, posY: P.posY, settings: P.settings, graphPath: P.graphPath, nodeType: P.nodeType, settingsClass: P.settingsClass, name: P.name, save: PCG_SAVE }, required: ['graphPath', 'nodeType'], effect: 'write', costLatency: 'interactive', costResources: 'low',
+    inputProps: { nodeName: P.nodeName, x: P.x, y: P.y, posX: P.posX, posY: P.posY, settings: P.settings, graphPath: P.graphPath, nodeType: P.nodeType, settingsClass: P.settingsClass, parameterName: { type: 'string', description: 'For PCGUserParameterGetSettings, bind this current graph parameter by its stable ID.' }, name: P.name, save: PCG_SAVE }, required: ['graphPath', 'nodeType'], effect: 'write', costLatency: 'interactive', costResources: 'low',
     exampleInput: { action: 'add_pcg_node', graphPath: '/Game/PCG/PCG_MyGraph', nodeType: 'PCGStaticMeshSpawner' }, exampleOutput: { success: true, message: 'PCG node added', nodeId: 'Node_3' },
     outputProps: { nodeId: { type: 'string', description: 'Created PCG node identifier.' } },
   }),
@@ -47,7 +65,7 @@ export const PCG_GRAPH_RECORDS: readonly CapabilityRecordSource[] = [
   buildWorldRecord({
     parentTool: 'manage_pcg', action: 'set_pcg_node_settings', plugins: PLUGIN,
     family: F, summary: 'Set settings on an existing PCG node.', whenToUse: ['A PCG node settings must be updated.'], whenNotToUse: ['The node must be created; use add_pcg_node.'],
-    inputProps: { nodeName: P.nodeName, title: P.title, classPath: P.classPath, texturePath: P.texturePath, meshPath: P.meshPath, actorClass: P.actorClass, x: P.x, y: P.y, settings: P.settings, graphPath: P.graphPath, nodeId: P.nodeId, save: PCG_SAVE }, required: ['graphPath', 'nodeId'], effect: 'write', behavior: { idempotency: 'idempotent' }, costLatency: 'interactive', costResources: 'low',
+    inputProps: { nodeName: P.nodeName, title: P.title, classPath: P.classPath, texturePath: P.texturePath, meshPath: P.meshPath, actorClass: P.actorClass, x: P.x, y: P.y, settings: P.settings, graphPath: P.graphPath, nodeId: P.nodeId, parameterName: { type: 'string', description: 'For a parameter getter, select a current graph parameter while preserving native GUID binding.' }, save: PCG_SAVE }, required: ['graphPath', 'nodeId'], effect: 'write', behavior: { idempotency: 'idempotent' }, costLatency: 'interactive', costResources: 'low',
     exampleInput: { action: 'set_pcg_node_settings', graphPath: '/Game/PCG/PCG_MyGraph', nodeId: 'Node_3' },
   }),
   buildWorldRecord({
@@ -205,4 +223,4 @@ export const PCG_GRAPH_RECORDS: readonly CapabilityRecordSource[] = [
       saved: { type: 'boolean', description: 'Whether the level/asset was saved.' },
     },
   }),
-];
+].map(withPCGEditContract);

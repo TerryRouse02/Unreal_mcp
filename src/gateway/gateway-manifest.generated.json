@@ -16107,7 +16107,14 @@
       "actions": [
         "edit_pcg_graph",
         "add_pcg_node",
-        "execute_pcg_graph"
+        "execute_pcg_graph",
+        "inspect_pcg",
+        "mutate_pcg_graph",
+        "batch_edit_pcg_graph",
+        "edit_pcg_parameters",
+        "remove_pcg_parameter",
+        "generate_pcg_graph",
+        "control_pcg_execution"
       ],
       "parameterNames": [
         "actorClass",
@@ -16116,24 +16123,42 @@
         "classPath",
         "componentName",
         "componentPath",
+        "container",
+        "control",
         "createComponent",
+        "edgeLimit",
+        "edgeOffset",
         "edit",
+        "expectedGraphRevision",
+        "filter",
         "force",
+        "graphInstancePath",
         "graphPath",
         "gridSize",
+        "includeSettings",
         "inputName",
+        "limit",
         "meshPath",
+        "mutation",
         "name",
+        "newName",
         "nodeId",
         "nodeKind",
         "nodeName",
         "nodeType",
+        "offset",
+        "openEditor",
+        "operationId",
+        "operations",
         "outputName",
         "overwrite",
+        "parameterEdit",
+        "parameterName",
         "parentGraphPath",
         "path",
         "posX",
         "posY",
+        "sampleLimit",
         "save",
         "scope",
         "settings",
@@ -16141,10 +16166,16 @@
         "sourceNodeId",
         "sourcePin",
         "subgraphPath",
+        "target",
         "targetNodeId",
         "targetPin",
         "texturePath",
+        "timeoutSeconds",
         "title",
+        "type",
+        "typeObject",
+        "value",
+        "view",
         "x",
         "y"
       ],
@@ -16175,48 +16206,112 @@
             "type": "string",
             "description": "Component path/name for PCG execution."
           },
+          "container": {
+            "type": "string",
+            "enum": [
+              "none",
+              "array"
+            ],
+            "description": "Scalar or one array container, default none."
+          },
+          "control": {
+            "type": "string",
+            "enum": [
+              "cleanup",
+              "cancel"
+            ],
+            "description": "Which control pcg execution variant to run."
+          },
           "createComponent": {
             "type": "boolean",
             "description": "Create a new PCG component when no selector is supplied."
+          },
+          "edgeLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Maximum edges, default 500."
+          },
+          "edgeOffset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "First edge index, default zero."
           },
           "edit": {
             "type": "string",
             "enum": [
               "create",
               "create_subgraph",
+              "sync_editor",
+              "move_node",
               "connect_pins",
               "set_node_settings",
               "set_partition_grid_size"
             ],
             "description": "Which edit pcg graph variant to run."
           },
+          "expectedGraphRevision": {
+            "type": "string",
+            "description": "Authored revision returned by get_pcg_graph; mandatory for batches."
+          },
+          "filter": {
+            "type": "string",
+            "description": "Case-insensitive settings class path filter."
+          },
           "force": {
             "type": "boolean",
-            "description": "Force regeneration even if a result already exists."
+            "description": "Force fresh native generation, default true."
+          },
+          "graphInstancePath": {
+            "type": "string",
+            "description": "Graph instance asset path for target=graphInstance."
           },
           "graphPath": {
             "type": "string",
-            "description": "PCG graph asset path (e.g. /Game/PCG/PCG_MyGraph)."
+            "description": "Graph asset path for target=graph."
           },
           "gridSize": {
             "type": "number",
             "description": "PCG partition grid cell size."
           },
+          "includeSettings": {
+            "type": "boolean",
+            "description": "Include reflected authored settings and owned subobjects, default false."
+          },
           "inputName": {
             "type": "string",
             "description": "PCG input pin name."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum items, default 50."
           },
           "meshPath": {
             "type": "string",
             "description": "Canonical /Game static mesh asset path."
           },
+          "mutation": {
+            "type": "string",
+            "enum": [
+              "disconnect",
+              "remove_node",
+              "batch"
+            ],
+            "description": "Which mutate pcg graph variant to run."
+          },
           "name": {
             "type": "string",
-            "description": "Name for the new asset or node."
+            "description": "Existing parameter name, or the new name for an add operation."
+          },
+          "newName": {
+            "type": "string",
+            "description": "Unused new parameter name."
           },
           "nodeId": {
             "type": "string",
-            "description": "PCG node identifier."
+            "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
           },
           "nodeKind": {
             "type": "string",
@@ -16257,6 +16352,29 @@
             "type": "string",
             "description": "PCG node type alias or UPCGSettings class path/name."
           },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "First item index, default zero."
+          },
+          "openEditor": {
+            "type": "boolean",
+            "description": "Open the graph editor when no representation exists, default false."
+          },
+          "operationId": {
+            "type": "string",
+            "description": "Opaque PCG operation ID, not the engine numeric taskId or the MCP long-call task ID."
+          },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "Ordered single-graph operations: add_node(settingsClass,settings,tempId,title,x,y,meshPath,actorClass,texturePath), set_settings(nodeId,settings,title,x,y,meshPath,actorClass,texturePath), move_node(nodeId,x,y), connect/disconnect(sourceNodeId,targetNodeId,sourcePin,targetPin), remove_node(nodeId). Earlier tempId values can be used as node IDs. No saves, execution, graph parameters, world changes or cross-asset writes inside a batch.",
+            "items": {
+              "type": "object",
+              "x-unreal-reflection-boundary": true
+            }
+          },
           "outputName": {
             "type": "string",
             "description": "PCG output pin name."
@@ -16264,6 +16382,20 @@
           "overwrite": {
             "type": "boolean",
             "description": "Overwrite the asset when it already exists."
+          },
+          "parameterEdit": {
+            "type": "string",
+            "enum": [
+              "add",
+              "set",
+              "rename",
+              "reset_override"
+            ],
+            "description": "Which edit pcg parameters variant to run."
+          },
+          "parameterName": {
+            "type": "string",
+            "description": "For PCGUserParameterGetSettings, bind this current graph parameter by its stable ID."
           },
           "parentGraphPath": {
             "type": "string",
@@ -16281,6 +16413,12 @@
             "type": "number",
             "description": "Node graph Y position."
           },
+          "sampleLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16,
+            "description": "World-space instance transform samples per returned instanced component, default two (first and last)."
+          },
           "save": {
             "type": "boolean",
             "description": "Save the PCG graph asset after the edit (default true)."
@@ -16297,35 +16435,102 @@
           },
           "settingsClass": {
             "type": "string",
-            "description": "UPCGSettings class path/name for the PCG node."
+            "description": "Concrete PCG settings class path or existing alias."
           },
           "sourceNodeId": {
             "type": "string",
-            "description": "Source node identifier for pin connection."
+            "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
           },
           "sourcePin": {
             "type": "string",
-            "description": "Source pin name."
+            "description": "Output pin label; omitted selects the native default."
           },
           "subgraphPath": {
             "type": "string",
             "description": "PCG subgraph asset path used by subgraph nodes."
           },
+          "target": {
+            "type": "string",
+            "enum": [
+              "graph",
+              "graphInstance",
+              "component"
+            ],
+            "description": "Parameter owner, default graph. Supply only the matching target path."
+          },
           "targetNodeId": {
             "type": "string",
-            "description": "Target node identifier for pin connection."
+            "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
           },
           "targetPin": {
             "type": "string",
-            "description": "Target pin name."
+            "description": "Input pin label; omitted selects the native default."
           },
           "texturePath": {
             "type": "string",
             "description": "Canonical /Game texture asset path."
           },
+          "timeoutSeconds": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 600,
+                "description": "Observation deadline, default 60."
+              },
+              {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 600,
+                "description": "Observation deadline, default 60; timeout does not silently cancel native work."
+              }
+            ],
+            "description": "Observation deadline, default 60."
+          },
           "title": {
             "type": "string",
             "description": "Node title (alias of nodeName)."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Bool",
+              "Byte",
+              "Int32",
+              "Int64",
+              "Float",
+              "Double",
+              "Name",
+              "String",
+              "Enum",
+              "Struct",
+              "Object",
+              "Class",
+              "SoftObject",
+              "SoftClass"
+            ],
+            "description": "Native property bag value type."
+          },
+          "typeObject": {
+            "type": "string",
+            "description": "Enum, struct or class path. Struct supports Vector, Rotator and Transform."
+          },
+          "value": {
+            "description": "Optional initial default value, validated on a copied property bag before adding the parameter."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "node_types",
+              "settings_schema",
+              "graph",
+              "editor_graph",
+              "validation",
+              "parameters",
+              "operation_status",
+              "component_results"
+            ],
+            "description": "Which inspect pcg variant to run."
           },
           "x": {
             "type": "number",
@@ -16340,7 +16545,14 @@
             "enum": [
               "edit_pcg_graph",
               "add_pcg_node",
-              "execute_pcg_graph"
+              "execute_pcg_graph",
+              "inspect_pcg",
+              "mutate_pcg_graph",
+              "batch_edit_pcg_graph",
+              "edit_pcg_parameters",
+              "remove_pcg_parameter",
+              "generate_pcg_graph",
+              "control_pcg_execution"
             ],
             "description": "Action to invoke on manage_pcg."
           }

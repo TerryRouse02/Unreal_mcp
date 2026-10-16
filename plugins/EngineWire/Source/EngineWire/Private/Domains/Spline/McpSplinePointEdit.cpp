@@ -40,6 +40,7 @@ bool HandleAddSplinePoint(
     SplineComp->SetSplinePointType(Index, ParseSplinePointType(PointType), true);
     // The declared tangents were never read, so every added point took automatic ones.
     ApplySplinePointTangents(SplineComp, Index, Payload);
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 
@@ -77,6 +78,7 @@ bool HandleRemoveSplinePoint(
     }
 
     SplineComp->RemoveSplinePoint(PointIndex, true);
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 
@@ -115,6 +117,7 @@ bool HandleSetSplinePointPosition(
     }
 
     SplineComp->SetLocationAtSplinePoint(PointIndex, Position, ESplineCoordinateSpace::Local, true);
+    SplineComp->bSplineHasBeenEdited = true;
     SplineComp->UpdateSpline();
     Actor->MarkPackageDirty();
 

@@ -1,5 +1,8 @@
 #include "Domains/PCG/McpPCGPrivate.h"
 #include "Engine/Texture.h"
+#if MCP_HAS_PCG && (ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7))
+#include "Elements/PCGUserParameterGet.h"
+#endif
 
 #if MCP_HAS_PCG
 namespace McpPCGHandlers
@@ -92,6 +95,24 @@ bool ApplyPCGConvenienceSettings(const FString& SubAction, UPCGSettings* Setting
         return true;
     }
 
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+    if (Payload->HasField(TEXT("parameterName")))
+    {
+        UPCGUserParameterGetSettings* Getter = Cast<UPCGUserParameterGetSettings>(Settings);
+        FString GraphPath;
+        UPCGGraph* Graph = LoadPCGAsset<UPCGGraph>(GetJsonStringField(Payload, TEXT("graphPath")), TEXT("parameter graph"), GraphPath, OutError);
+        const FInstancedPropertyBag* Bag = Graph ? Graph->GetUserParametersStruct() : nullptr;
+        const FPropertyBagPropertyDesc* Parameter = Bag ? Bag->FindPropertyDescByName(FName(*GetJsonStringField(Payload, TEXT("parameterName")))) : nullptr;
+        if (!Getter || !Parameter)
+        {
+            OutError = TEXT("parameterName must identify a current parameter and requires PCGUserParameterGetSettings.");
+            return false;
+        }
+        Getter->PropertyGuid = Parameter->ID;
+        Getter->PropertyName = Parameter->Name;
+        ++OutAppliedCount;
+    }
+#endif
     if (SubAction == TEXT("add_texture_data_node") || Payload->HasField(TEXT("texturePath")))
     {
         const FString TexturePath = GetJsonStringField(Payload, TEXT("texturePath"));

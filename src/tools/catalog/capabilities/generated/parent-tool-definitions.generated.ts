@@ -21466,48 +21466,112 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Component path/name for PCG execution."
         },
+        "container": {
+          "type": "string",
+          "enum": [
+            "none",
+            "array"
+          ],
+          "description": "Scalar or one array container, default none."
+        },
+        "control": {
+          "type": "string",
+          "enum": [
+            "cleanup",
+            "cancel"
+          ],
+          "description": "Which control pcg execution variant to run."
+        },
         "createComponent": {
           "type": "boolean",
           "description": "Create a new PCG component when no selector is supplied."
+        },
+        "edgeLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum edges, default 500."
+        },
+        "edgeOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "First edge index, default zero."
         },
         "edit": {
           "type": "string",
           "enum": [
             "create",
             "create_subgraph",
+            "sync_editor",
+            "move_node",
             "connect_pins",
             "set_node_settings",
             "set_partition_grid_size"
           ],
           "description": "Which edit pcg graph variant to run."
         },
+        "expectedGraphRevision": {
+          "type": "string",
+          "description": "Authored revision returned by get_pcg_graph; mandatory for batches."
+        },
+        "filter": {
+          "type": "string",
+          "description": "Case-insensitive settings class path filter."
+        },
         "force": {
           "type": "boolean",
-          "description": "Force regeneration even if a result already exists."
+          "description": "Force fresh native generation, default true."
+        },
+        "graphInstancePath": {
+          "type": "string",
+          "description": "Graph instance asset path for target=graphInstance."
         },
         "graphPath": {
           "type": "string",
-          "description": "PCG graph asset path (e.g. /Game/PCG/PCG_MyGraph)."
+          "description": "Graph asset path for target=graph."
         },
         "gridSize": {
           "type": "number",
           "description": "PCG partition grid cell size."
         },
+        "includeSettings": {
+          "type": "boolean",
+          "description": "Include reflected authored settings and owned subobjects, default false."
+        },
         "inputName": {
           "type": "string",
           "description": "PCG input pin name."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum items, default 50."
         },
         "meshPath": {
           "type": "string",
           "description": "Canonical /Game static mesh asset path."
         },
+        "mutation": {
+          "type": "string",
+          "enum": [
+            "disconnect",
+            "remove_node",
+            "batch"
+          ],
+          "description": "Which mutate pcg graph variant to run."
+        },
         "name": {
           "type": "string",
-          "description": "Name for the new asset or node."
+          "description": "Existing parameter name, or the new name for an add operation."
+        },
+        "newName": {
+          "type": "string",
+          "description": "Unused new parameter name."
         },
         "nodeId": {
           "type": "string",
-          "description": "PCG node identifier."
+          "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
         },
         "nodeKind": {
           "type": "string",
@@ -21548,6 +21612,29 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "PCG node type alias or UPCGSettings class path/name."
         },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "First item index, default zero."
+        },
+        "openEditor": {
+          "type": "boolean",
+          "description": "Open the graph editor when no representation exists, default false."
+        },
+        "operationId": {
+          "type": "string",
+          "description": "Opaque PCG operation ID, not the engine numeric taskId or the MCP long-call task ID."
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "description": "Ordered single-graph operations: add_node(settingsClass,settings,tempId,title,x,y,meshPath,actorClass,texturePath), set_settings(nodeId,settings,title,x,y,meshPath,actorClass,texturePath), move_node(nodeId,x,y), connect/disconnect(sourceNodeId,targetNodeId,sourcePin,targetPin), remove_node(nodeId). Earlier tempId values can be used as node IDs. No saves, execution, graph parameters, world changes or cross-asset writes inside a batch.",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          }
+        },
         "outputName": {
           "type": "string",
           "description": "PCG output pin name."
@@ -21555,6 +21642,20 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         "overwrite": {
           "type": "boolean",
           "description": "Overwrite the asset when it already exists."
+        },
+        "parameterEdit": {
+          "type": "string",
+          "enum": [
+            "add",
+            "set",
+            "rename",
+            "reset_override"
+          ],
+          "description": "Which edit pcg parameters variant to run."
+        },
+        "parameterName": {
+          "type": "string",
+          "description": "For PCGUserParameterGetSettings, bind this current graph parameter by its stable ID."
         },
         "parentGraphPath": {
           "type": "string",
@@ -21572,6 +21673,12 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "number",
           "description": "Node graph Y position."
         },
+        "sampleLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16,
+          "description": "World-space instance transform samples per returned instanced component, default two (first and last)."
+        },
         "save": {
           "type": "boolean",
           "description": "Save the PCG graph asset after the edit (default true)."
@@ -21588,35 +21695,102 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         },
         "settingsClass": {
           "type": "string",
-          "description": "UPCGSettings class path/name for the PCG node."
+          "description": "Concrete PCG settings class path or existing alias."
         },
         "sourceNodeId": {
           "type": "string",
-          "description": "Source node identifier for pin connection."
+          "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
         },
         "sourcePin": {
           "type": "string",
-          "description": "Source pin name."
+          "description": "Output pin label; omitted selects the native default."
         },
         "subgraphPath": {
           "type": "string",
           "description": "PCG subgraph asset path used by subgraph nodes."
         },
+        "target": {
+          "type": "string",
+          "enum": [
+            "graph",
+            "graphInstance",
+            "component"
+          ],
+          "description": "Parameter owner, default graph. Supply only the matching target path."
+        },
         "targetNodeId": {
           "type": "string",
-          "description": "Target node identifier for pin connection."
+          "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
         },
         "targetPin": {
           "type": "string",
-          "description": "Target pin name."
+          "description": "Input pin label; omitted selects the native default."
         },
         "texturePath": {
           "type": "string",
           "description": "Canonical /Game texture asset path."
         },
+        "timeoutSeconds": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 600,
+              "description": "Observation deadline, default 60."
+            },
+            {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 600,
+              "description": "Observation deadline, default 60; timeout does not silently cancel native work."
+            }
+          ],
+          "description": "Observation deadline, default 60."
+        },
         "title": {
           "type": "string",
           "description": "Node title (alias of nodeName)."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Bool",
+            "Byte",
+            "Int32",
+            "Int64",
+            "Float",
+            "Double",
+            "Name",
+            "String",
+            "Enum",
+            "Struct",
+            "Object",
+            "Class",
+            "SoftObject",
+            "SoftClass"
+          ],
+          "description": "Native property bag value type."
+        },
+        "typeObject": {
+          "type": "string",
+          "description": "Enum, struct or class path. Struct supports Vector, Rotator and Transform."
+        },
+        "value": {
+          "description": "Optional initial default value, validated on a copied property bag before adding the parameter."
+        },
+        "view": {
+          "type": "string",
+          "enum": [
+            "node_types",
+            "settings_schema",
+            "graph",
+            "editor_graph",
+            "validation",
+            "parameters",
+            "operation_status",
+            "component_results"
+          ],
+          "description": "Which inspect pcg variant to run."
         },
         "x": {
           "type": "number",
@@ -21631,7 +21805,14 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "enum": [
             "edit_pcg_graph",
             "add_pcg_node",
-            "execute_pcg_graph"
+            "execute_pcg_graph",
+            "inspect_pcg",
+            "mutate_pcg_graph",
+            "batch_edit_pcg_graph",
+            "edit_pcg_parameters",
+            "remove_pcg_parameter",
+            "generate_pcg_graph",
+            "control_pcg_execution"
           ],
           "description": "Action to invoke on manage_pcg."
         }
@@ -21644,46 +21825,459 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
     "outputSchema": {
       "type": "object",
       "properties": {
+        "activeOperationId": {
+          "type": "string",
+          "description": "Current operation on this component, disclosed only to its owning principal."
+        },
+        "actors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Paged managed actor paths."
+        },
+        "actorsTruncated": {
+          "type": "boolean",
+          "description": "More actor rows remain."
+        },
+        "ambiguous": {
+          "type": "boolean",
+          "description": "Multiple owned editor graph candidates prevent a safe read."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "An editor graph already exists; a read never opens one."
+        },
+        "cancellationRequested": {
+          "type": "boolean",
+          "description": "An explicit native generation cancellation was requested, not proof of cancellation completion."
+        },
+        "cleaning": {
+          "type": "boolean",
+          "description": "Current native cleanup flag."
+        },
+        "committed": {
+          "type": "boolean",
+          "description": "All in-memory edits committed."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "This operation observation reached a terminal state; inspect succeeded and native flags."
+        },
+        "componentPath": {
+          "type": "string",
+          "description": "Original target component object path."
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Paged managed components, mesh references, counts and bounded world-space transform samples."
+        },
+        "componentsTruncated": {
+          "type": "boolean",
+          "description": "More component rows remain."
+        },
+        "consistent": {
+          "type": "boolean",
+          "description": "Visible model nodes, pins, positions and edges map consistently."
+        },
         "details": {
           "type": "object",
           "x-unreal-reflection-boundary": true,
           "description": "Additional handler result fields not named by the contract."
         },
+        "diagnosticTotal": {
+          "type": "integer",
+          "description": "Total validation diagnostics."
+        },
+        "diagnostics": {
+          "oneOf": [
+            {
+              "type": "array",
+              "description": "Paged validation diagnostics.",
+              "items": {
+                "type": "object",
+                "x-unreal-reflection-boundary": true
+              }
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "x-unreal-reflection-boundary": true
+              },
+              "description": "At most 100 native warnings/errors for the target execution source, including nested graph stacks."
+            }
+          ],
+          "description": "At most 100 native warnings/errors for the target execution source, including nested graph stacks."
+        },
+        "diagnosticsAvailable": {
+          "type": "boolean",
+          "description": "Native execution visual logs were available; a generated event alone does not prove error-free completion."
+        },
+        "edgeOffset": {
+          "type": "integer",
+          "description": "First edge index."
+        },
+        "edgeTotal": {
+          "type": "integer",
+          "description": "Total edges."
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Paged backend or editor edges."
+        },
+        "edgesTruncated": {
+          "type": "boolean",
+          "description": "More edges remain."
+        },
+        "editorConsistent": {
+          "type": "boolean",
+          "description": "The existing editor representation maps consistently to visible model nodes and edges."
+        },
+        "editorGraph": {
+          "oneOf": [
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Editor consistency after parameter propagation."
+            },
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Editor/model consistency after commit."
+            },
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Editor/model mapping status after the edit. An unopened graph is reported as not_created."
+            },
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Model/editor mapping diagnostics including hidden nodes, comments and edge consistency."
+            }
+          ],
+          "description": "Editor consistency after parameter propagation."
+        },
+        "elapsedSeconds": {
+          "type": "number",
+          "description": "Elapsed observation wall time."
+        },
+        "engineStillRunning": {
+          "type": "boolean",
+          "description": "This operation is still leased to native work. A timeout or cancelled observation does not stop native work."
+        },
+        "failedIndex": {
+          "type": "integer",
+          "description": "Zero-based failed step, or -1 for graph synchronization failure."
+        },
+        "generating": {
+          "type": "boolean",
+          "description": "Current native generating flag; not proof of this operation completion."
+        },
+        "graphInstancePath": {
+          "type": "string",
+          "description": "Resolved graph instance asset path."
+        },
         "graphPath": {
           "type": "string",
           "description": "Created PCG graph asset path."
+        },
+        "graphRevision": {
+          "type": "string",
+          "description": "Authored graph revision observed when this operation began."
         },
         "gridSize": {
           "type": "number",
           "description": "New partition grid cell size."
         },
+        "hismComponentCount": {
+          "type": "integer",
+          "description": "Managed HISM components."
+        },
+        "instanceCount": {
+          "type": "number",
+          "description": "Sum of instances across every related ISM and HISM component."
+        },
+        "instanceRevision": {
+          "type": "string",
+          "description": "Component seed, grid and effective graph-instance parameter revision observed at start."
+        },
+        "ismComponentCount": {
+          "type": "integer",
+          "description": "Managed ordinary ISM components, excluding HISM."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Paged node, class or property records."
+        },
+        "kind": {
+          "type": "string",
+          "description": "generate or cleanup."
+        },
+        "lateCompletionObserved": {
+          "type": "boolean",
+          "description": "Native work later completed after this observation had already failed, timed out or been cancelled."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum inventory rows."
+        },
+        "loadedClassesOnly": {
+          "type": "boolean",
+          "description": "Class discovery only enumerates loaded concrete settings classes."
+        },
+        "loadedReferencesOnly": {
+          "type": "boolean",
+          "description": "Reference diagnostics inspect loaded graphs only; no project-wide unused-parameter claim."
+        },
+        "managedActorCount": {
+          "type": "integer",
+          "description": "Managed root actors plus owned ChildActorComponent descendants; never a global tag scan."
+        },
+        "managedComponentCount": {
+          "type": "integer",
+          "description": "Distinct managed components, including components of managed actor trees."
+        },
+        "managedResourceCount": {
+          "type": "integer",
+          "description": "All managed resource records belonging to this PCG component."
+        },
+        "managedRootActorCount": {
+          "type": "integer",
+          "description": "Distinct actors directly held by managed actor resources."
+        },
+        "mayHaveCommitted": {
+          "type": "boolean",
+          "description": "A native commit failure may have left a schema or override change; inspect the target."
+        },
         "message": {
           "type": "string",
           "description": "Human-readable result message."
+        },
+        "nativeCancelled": {
+          "type": "boolean",
+          "description": "The native cancellation delegate was observed."
+        },
+        "nativeCleaned": {
+          "type": "boolean",
+          "description": "The matching native cleanup delegate was observed."
+        },
+        "nativeGenerated": {
+          "type": "boolean",
+          "description": "The matching native generated delegate was observed after scheduling."
+        },
+        "noOp": {
+          "type": "boolean",
+          "description": "No native cleanup task was needed because no managed resources or outputs remained."
         },
         "nodeId": {
           "type": "string",
           "description": "Created PCG node identifier."
         },
+        "nodeIds": {
+          "type": "object",
+          "x-unreal-reflection-boundary": true,
+          "description": "Temporary node IDs mapped to committed model node IDs."
+        },
+        "observationCancelled": {
+          "type": "boolean",
+          "description": "The MCP request observation was cancelled without silently cancelling native work."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "First inventory row."
+        },
+        "operationErrorCode": {
+          "type": "string",
+          "description": "Terminal operation error, separate from whether a status read succeeded."
+        },
+        "operationId": {
+          "type": "string",
+          "description": "Optional authenticated per-component operation correlation ID on supported engine versions; not an MCP task ID."
+        },
+        "operationTracking": {
+          "type": "boolean",
+          "description": "Native completion observation is available for this call; false does not change the legacy scheduling semantics."
+        },
+        "outputDataCount": {
+          "type": "integer",
+          "description": "Root generated output collection entry count."
+        },
+        "outputPointCount": {
+          "type": "number",
+          "description": "Point count in bounded output summaries, without dumping point arrays."
+        },
+        "outputTruncated": {
+          "type": "boolean",
+          "description": "More output rows remain."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Paged output class, pin, count and bounded tag summaries."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags."
+        },
+        "phase": {
+          "type": "string",
+          "description": "Failure phase: preflight or commit."
+        },
         "previousGridSize": {
           "type": "number",
           "description": "Previous partition grid cell size."
         },
+        "previousRevision": {
+          "type": "string",
+          "description": "Authored graph revision before commit."
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Loaded parameter getter references that prevent removal."
+        },
+        "residualChanges": {
+          "type": "boolean",
+          "description": "Failure recovery could not verify complete restoration."
+        },
+        "resourceSnapshotFromSuccessfulOperation": {
+          "type": "boolean",
+          "description": "Whether the captured inventory belongs to a successfully observed operation."
+        },
+        "resources": {
+          "type": "object",
+          "x-unreal-reflection-boundary": true,
+          "description": "Managed resource inventory captured at observation end, not old data masquerading as completion."
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true
+          },
+          "description": "Committed operation results in input order."
+        },
+        "retention": {
+          "type": "string",
+          "description": "Current process only; 128 completed operations, 30-minute TTL. Active native work is never evicted."
+        },
+        "revision": {
+          "type": "string",
+          "description": "Authored graph content revision after a successful edit."
+        },
+        "rollbackScope": {
+          "type": "string",
+          "description": "Explicit persistence and rollback boundary."
+        },
+        "rolledBack": {
+          "type": "boolean",
+          "description": "Cross-instance parameter propagation is not claimed to be atomically rolled back."
+        },
         "saved": {
           "type": "boolean",
-          "description": "Whether the level/asset was saved."
+          "description": "The edited graph was saved successfully."
         },
         "scope": {
           "type": "string",
           "description": "Resolved scope: 'world' or 'component'."
         },
+        "settingsClass": {
+          "type": "string",
+          "description": "Resolved settings class."
+        },
+        "snapshotKind": {
+          "type": "string",
+          "description": "Current inventory reads do not constitute a generation completion signal."
+        },
+        "state": {
+          "type": "string",
+          "description": "running, succeeded, failed, cancelled, timed_out, target_gone, target_moved, graph_changed, superseded, unknown, save_failed or observation_cancelled."
+        },
+        "succeeded": {
+          "type": "boolean",
+          "description": "Native completion and available diagnostics confirmed success for this operation."
+        },
         "success": {
           "type": "boolean",
           "description": "Whether the action succeeded."
         },
+        "target": {
+          "type": "string",
+          "description": "Resolved parameter owner category."
+        },
         "taskId": {
           "type": "number",
-          "description": "Opaque numeric scheduling receipt for the PCG task."
+          "description": "Opaque native scheduling ID, not a completion signal or MCP task ID."
+        },
+        "total": {
+          "type": "integer",
+          "description": "Item count before pagination."
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "More items remain after this page."
+        },
+        "undo": {
+          "oneOf": [
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Async execution is not advertised as editor-undoable."
+            },
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Editor undo availability; unrelated to explicit recovery and disk persistence."
+            },
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Honest editor undo availability, separate from explicit failure recovery and disk persistence."
+            },
+            {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Honest editor undo availability."
+            }
+          ],
+          "description": "Async execution is not advertised as editor-undoable."
+        },
+        "unresolvedResourceReferences": {
+          "type": "integer",
+          "description": "Unresolved managed soft references; reads do not load actors or stream levels."
+        },
+        "valid": {
+          "type": "boolean",
+          "description": "All inspected model edges pass native pin compatibility checks."
+        },
+        "validationScope": {
+          "type": "string",
+          "description": "Checks performed; this is not a generation result."
         }
       },
       "additionalProperties": true
