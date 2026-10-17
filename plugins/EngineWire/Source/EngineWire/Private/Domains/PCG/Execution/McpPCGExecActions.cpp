@@ -1,6 +1,6 @@
 #include "Domains/PCG/Execution/McpPCGExecution.h"
 #include "Domains/PCG/Discovery/McpPCGRead.h"
-#include "Foundation/BridgeHelpers/Security/McpAssetPathCanonical.h"
+#include "Foundation/BridgeHelpers/Security/McpSubobjectPath.h"
 
 #if MCP_HAS_PCG
 namespace McpPCGHandlers
@@ -24,11 +24,10 @@ bool HandlePCGExecution(UEngineWireSubsystem* Bridge, const FString& RequestId, 
     FString Error;
     if (Action == TEXT("get_pcg_operation_status") || Action == TEXT("cancel_pcg_operation"))
     {
-        FString Path = GetJsonStringField(Payload, TEXT("componentPath")).TrimStartAndEnd();
-        McpNormalizeSlashes(Path);
-        McpAssetPathCanonical::MapContentRootInline(Path);
-        auto Op = FindPCGOperation(GetJsonStringField(Payload, TEXT("operationId")), Principal, Path);
-        if (!Op.IsValid() || !Path.StartsWith(TEXT("/")))
+        FString Path, Package;
+        const bool bValidPath = McpSubobjectPath::TryCanonicalize(GetJsonStringField(Payload, TEXT("componentPath")), Path, Package);
+        auto Op = bValidPath ? FindPCGOperation(GetJsonStringField(Payload, TEXT("operationId")), Principal, Path) : nullptr;
+        if (!Op.IsValid())
         {
             Bridge->SendAutomationError(Socket, RequestId, TEXT("No retained operation matches this authenticated principal and component path."), TEXT("PCG_OPERATION_NOT_FOUND"));
             return true;

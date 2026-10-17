@@ -2,7 +2,7 @@
 #if MCP_HAS_PCG_EXECUTION
 #include "Core/Requests/McpRequestOriginRegistry.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
-#include "Foundation/BridgeHelpers/Security/McpAssetPathCanonical.h"
+#include "Foundation/BridgeHelpers/Security/McpSubobjectPath.h"
 #include "MCP/Gateway/McpNativeGatewayCanonicalJson.h"
 #include "Misc/SecureHash.h"
 
@@ -10,11 +10,9 @@ namespace McpPCGHandlers
 {
 UPCGComponent* ResolveExactPCGComponent(const TSharedPtr<FJsonObject>& Payload, FString& OutError)
 {
-    FString Path = GetJsonStringField(Payload, TEXT("componentPath")).TrimStartAndEnd();
-    McpNormalizeSlashes(Path);
-    McpAssetPathCanonical::MapContentRootInline(Path);
+    FString Path, Package;
     UWorld* World = McpHandlerUtils::GetEditorWorld();
-    if (!World || !Path.StartsWith(TEXT("/")) || Path.Contains(TEXT("..")))
+    if (!World || !McpSubobjectPath::TryCanonicalize(GetJsonStringField(Payload, TEXT("componentPath")), Path, Package))
     {
         OutError = TEXT("An exact absolute componentPath in the current editor world is required.");
         return nullptr;

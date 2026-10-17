@@ -23,6 +23,11 @@ bool FMcpPCGBatchPreflightTest::RunTest(const FString& Parameters)
     Add->SetStringField(TEXT("tempId"), TEXT("first"));
     TestTrue(TEXT("Temporary node creation"), ApplyPCGMutation(Graph.Get(), Add, Context, Result, Error, Code));
     TestTrue(TEXT("Temporary ID resolved to a stable node ID"), Context.TemporaryNodes.Contains(TEXT("first")));
+    UPCGNode* Created = FindPCGNode(Graph.Get(), Context.TemporaryNodes.FindRef(TEXT("first")));
+    if (!TestNotNull(TEXT("Committed batch node"), Created) || !TestNotNull(TEXT("Committed batch settings"), Created->GetSettings())) return false;
+    TestFalse(TEXT("Committed node does not inherit preflight transient flags"), Created->HasAnyFlags(RF_Transient));
+    TestFalse(TEXT("Committed settings must be serialized when the graph is saved"), Created->GetSettings()->HasAnyFlags(RF_Transient));
+    TestEqual(TEXT("Committed settings are privately owned by their node"), Created->GetSettings()->GetOuter(), static_cast<UObject*>(Created));
     auto Move = MakeShared<FJsonObject>();
     Move->SetStringField(TEXT("op"), TEXT("move_node"));
     Move->SetStringField(TEXT("nodeId"), TEXT("first"));

@@ -107,8 +107,10 @@ Use `add_pcg_parameter`, `set_pcg_parameter`, `rename_pcg_parameter`,
 kinds are Bool, Byte, Int32, Int64, Float, Double, Name, String, Enum, Struct,
 Object, Class, SoftObject and SoftClass, as scalars or a single array container.
 Struct support is Vector, Rotator and Transform. Enum/struct/reference types use
-`typeObject`. Array writes are limited to 10,000 elements. Unsupported existing
-bag types are explicitly refused instead of silently coerced.
+`typeObject`. Array writes are limited to 10,000 elements and validated element
+by element. Floating-point inputs must be finite and fit their native type;
+malformed numeric strings are refused rather than becoming zero. Unsupported
+existing bag types are explicitly refused instead of silently coerced.
 
 Setting an instance parameter establishes an override. Reset clears that one
 override and resumes inheritance. Rename uses the native API and retains the
@@ -190,6 +192,26 @@ parameter. Folded family selectors retain the same permission boundaries:
 `inspect_pcg` (`view`), `edit_pcg_graph` (`edit`), `mutate_pcg_graph` (`mutation`),
 `edit_pcg_parameters` (`parameterEdit`) and `control_pcg_execution` (`control`).
 Existing leaf names remain callable.
+
+Component addresses such as `Map.Map:PersistentLevel.Actor.PCGComponent` are
+validated as complete subobject paths before their owning package is checked
+against the principal's allowed content prefixes. A valid prefix cannot rescue a
+malformed suffix, traversal or host-filesystem path. Asset/file sanitizers are
+not made permissive toward arbitrary colons. This is package/folder confinement,
+not a new per-actor ACL; the handler still resolves the exact current-world
+component. Supported `/Content` and separator aliases use the same canonical form
+at authorization and resolution, while legacy short-name execution calls retain
+their existing unrestricted behavior.
+
+An authenticated profile refused for the editor project receives
+`PROJECT_NOT_PERMITTED` on native MCP and through the WS gateway. Unknown or
+malformed handshake failures do not forward peer text; ordinary connection
+unavailability remains `NOT_CONNECTED`. The typed project refusal is cleared
+before another connection attempt and on success, rather than being reused as a
+stale cause for a later socket failure. Operation ownership remains bound to the
+trusted principal and exact original component, independently of these path
+checks; inventory access does not grant access to another principal's retained
+operation or expose their active operation ID.
 
 New graph-parameter and completion-observation implementations require the
 native APIs available in UE 5.7 or later; older supported engine branches return

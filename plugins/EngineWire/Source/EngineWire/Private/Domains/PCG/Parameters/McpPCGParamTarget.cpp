@@ -1,5 +1,6 @@
 #include "Domains/PCG/Parameters/McpPCGParameters.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
+#include "Foundation/BridgeHelpers/Security/McpSubobjectPath.h"
 
 #if MCP_HAS_PCG_PARAMETERS
 namespace McpPCGHandlers
@@ -27,8 +28,8 @@ bool ResolvePCGParameterTarget(const TSharedPtr<FJsonObject>& Payload, FPCGParam
     {
         UWorld* World = McpHandlerUtils::GetEditorWorld();
         AActor* Actor = nullptr;
-        const FString Selector = GetJsonStringField(Payload, TEXT("componentPath"));
-        if (!World || !Selector.StartsWith(TEXT("/")))
+        FString Selector, Package;
+        if (!World || !McpSubobjectPath::TryCanonicalize(GetJsonStringField(Payload, TEXT("componentPath")), Selector, Package))
         {
             OutError = TEXT("Component parameters require the absolute componentPath returned by PCG component discovery or execution.");
             return false;

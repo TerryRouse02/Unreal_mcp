@@ -71,12 +71,15 @@ bool ApplyPCGMutation(UPCGGraph* Graph, const TSharedPtr<FJsonObject>& Operation
         TStrongObjectPtr<UPCGSettings> Staged(PreparePCGSettings(Class->GetDefaultObject<UPCGSettings>(), TEXT("add_pcg_node"), Operation, OutError));
         if (!Staged.IsValid()) return false;
         UPCGSettings* Settings = nullptr;
-        UPCGNode* Added = Graph->AddNodeCopy(Staged.Get(), Settings);
+        // Copying the transient preflight settings would omit them when this graph is saved.
+        UPCGNode* Added = Graph->AddNodeOfType(Class, Settings);
         if (!Added || !Settings)
         {
-            OutError = TEXT("Could not add the staged PCG node.");
+            OutError = TEXT("Could not create the validated PCG node.");
             return false;
         }
+        int32 AppliedCount = 0;
+        if (!ApplyPCGSettingsPayload(Settings, TEXT("add_pcg_node"), Operation, OutError, AppliedCount)) return false;
         ApplyNodeMetadata(Added, Operation);
         Added->UpdateAfterSettingsChangeDuringCreation();
         if (!TemporaryId.IsEmpty()) Context.TemporaryNodes.Add(TemporaryId, Added->GetName());

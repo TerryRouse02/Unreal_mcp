@@ -7,8 +7,10 @@
 #include "Misc/App.h"
 
 bool FMcpConnectionManager::AuthenticateSocketPrincipal(
-    FMcpBridgeWebSocket* SocketPtr, const FString& PresentedToken, bool bLegacyTokenMatch)
+    FMcpBridgeWebSocket* SocketPtr, const FString& PresentedToken, bool bLegacyTokenMatch,
+    EMcpBridgeAuthenticationRefusal& OutRefusal)
 {
+	OutRefusal = EMcpBridgeAuthenticationRefusal::None;
 	const UEngineWireSettings* Settings = GetDefault<UEngineWireSettings>();
 
 	FMcpPrincipalResolveRequest Request;
@@ -29,6 +31,7 @@ bool FMcpConnectionManager::AuthenticateSocketPrincipal(
 	if ((Settings->bRequireCapabilityToken || !PresentedToken.IsEmpty()) &&
 		!Principal.bAuthenticated)
 	{
+		OutRefusal = EMcpBridgeAuthenticationRefusal::InvalidCapabilityToken;
 		UE_LOG(LogEngineWireSubsystem, Warning, TEXT("Capability token mismatch."));
 		return false;
 	}
@@ -39,7 +42,8 @@ bool FMcpConnectionManager::AuthenticateSocketPrincipal(
 	    McpCapabilityAuthorization::CheckProject(Principal, FApp::GetProjectName());
 	if (!ProjectDecision.bAllowed)
 	{
-		UE_LOG(LogEngineWireSubsystem, Warning, TEXT("%s"), *ProjectDecision.Message);
+		OutRefusal = EMcpBridgeAuthenticationRefusal::ProjectNotPermitted;
+		UE_LOG(LogEngineWireSubsystem, Warning, TEXT("Capability principal is not permitted for this project."));
 		return false;
 	}
 

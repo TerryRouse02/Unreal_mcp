@@ -32,6 +32,22 @@ bool StagePCGParameterValue(const FInstancedPropertyBag& Source, FName Name, con
         OutError = TEXT("Parameter arrays are limited to 10000 elements per edit.");
         return false;
     }
+    if (const FArrayProperty* Array = CastField<FArrayProperty>(Desc->CachedProperty))
+    {
+        if (!Value.IsValid() || Value->Type != EJson::Array)
+        {
+            OutError = TEXT("An array parameter requires a JSON array value.");
+            return false;
+        }
+        FScriptArrayHelper Values(Array, Array->ContainerPtrToValuePtr<void>(OutBag.GetMutableValue().GetMemory()));
+        Values.EmptyValues();
+        Values.AddValues(Value->AsArray().Num());
+        for (int32 Index = 0; Index < Value->AsArray().Num(); ++Index)
+        {
+            if (!::ApplyJsonValueToProperty(Values.GetRawPtr(Index), Array->Inner, Value->AsArray()[Index], OutError)) return false;
+        }
+        return true;
+    }
     return ::ApplyJsonValueToProperty(OutBag.GetMutableValue().GetMemory(), const_cast<FProperty*>(Desc->CachedProperty), Value, OutError);
 }
 

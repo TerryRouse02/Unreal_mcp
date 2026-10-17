@@ -11,9 +11,10 @@ const instanceFixture = `import unreal
 assert unreal.SystemLibrary.get_game_name() == 'PCGValidation'
 assert not unreal.EditorAssetLibrary.does_asset_exist('${instancePath}')
 factory = unreal.PCGGraphInstanceFactory()
-factory.set_editor_property('ParentGraph', unreal.load_asset('${graphPath}'))
 instance = unreal.AssetToolsHelpers.get_asset_tools().create_asset('Instance', '${runRoot}', unreal.PCGGraphInstance, factory)
 assert instance is not None
+instance.set_editor_property('Graph', unreal.load_asset('${graphPath}'))
+assert instance.get_editor_property('Graph').get_path_name() == '${graphPath}.Graph'
 assert instance.get_path_name() == '${instancePath}.Instance'
 `;
 const cases = [
@@ -40,6 +41,16 @@ const cases = [
   read('Verify the failed parameter edit left the graph unchanged', 'Spacing', { assertions: [
     { path: 'structuredContent.result.revision', equals: captured('beforeInvalid') },
     { path: 'structuredContent.result.parameters.0.value', equals: 200 },
+  ] }),
+  { scenario: 'An invalid array element cannot silently become zero', toolName: 'manage_pcg',
+    arguments: { action: 'set_pcg_parameter', graphPath, name: 'Seeds', value: [1, 'invalid-integer', 3], save: false },
+    expected: { condition: 'error', errorPattern: 'INVALID_PARAMETER_VALUE' } },
+  read('A refused array edit leaves all parameter values unchanged', 'Seeds', { assertions: [
+    { path: 'structuredContent.result.revision', equals: captured('beforeInvalid') },
+    { path: 'structuredContent.result.parameters.0.value', length: 3 },
+    { path: 'structuredContent.result.parameters.0.value.0', equals: 1 },
+    { path: 'structuredContent.result.parameters.0.value.1', equals: 2 },
+    { path: 'structuredContent.result.parameters.0.value.2', equals: 3 },
   ] }),
   { scenario: 'Setup: create an exclusively owned graph-instance asset with the native factory', toolName: 'system_control',
     arguments: { action: 'execute_python', code: instanceFixture }, expected: 'success' },
