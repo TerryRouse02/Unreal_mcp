@@ -4,6 +4,7 @@
 #include "Domains/PCG/Editor/McpPCGEditor.h"
 #include "Foundation/McpScopedEditorTransaction.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
+#include "Domains/PCG/Discovery/McpPCGBudget.h"
 
 #if MCP_HAS_PCG
 namespace McpPCGHandlers
@@ -34,20 +35,22 @@ bool HandlePCGParameters(UEngineWireSubsystem* Bridge, const FString& RequestId,
     if (Target.Scope == TEXT("graphInstance")) Result->SetStringField(TEXT("graphInstancePath"), Target.Interface->GetPathName());
     if (Action == TEXT("get_pcg_parameters"))
     {
-        auto Rows = ReadPCGParameters(Target);
-        if (!NameString.IsEmpty()) Rows = Rows.FilterByPredicate([&NameString](const TSharedPtr<FJsonValue>& Row) {
-            return Row->AsObject()->GetStringField(TEXT("name")) == NameString;
-        });
+        const FString Revision = GetPCGGraphRevision(Target.Graph);
+        FPCGReadBudget ReadBudget;
+        if (Revision.IsEmpty() || !ReadBudget.CheckParameters(Target.Interface->GetUserParametersStruct()))
+        {
+            Bridge->SendAutomationError(Socket, RequestId, TEXT("Complete parameter state exceeds the authored read budget or has invalid dependencies."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
+            return true;
+        }
         const int32 Offset = FMath::Max(0, GetJsonIntField(Payload, TEXT("offset"), 0));
         const int32 Limit = FMath::Clamp(GetJsonIntField(Payload, TEXT("limit"), 50), 1, 100);
-        TArray<TSharedPtr<FJsonValue>> Page;
-        for (int32 Index = Offset; Index < Rows.Num() && Page.Num() < Limit; ++Index) Page.Add(Rows[Index]);
-        Result->SetArrayField(TEXT("parameters"), Page);
-        Result->SetNumberField(TEXT("total"), Rows.Num());
+        int32 Total = 0;
+        Result->SetArrayField(TEXT("parameters"), ReadPCGParameters(Target, NameString, Offset, Limit, &Total));
+        Result->SetNumberField(TEXT("total"), Total);
         Result->SetNumberField(TEXT("offset"), Offset);
         Result->SetNumberField(TEXT("limit"), Limit);
-        Result->SetBoolField(TEXT("truncated"), Offset + Limit < Rows.Num());
-        Result->SetStringField(TEXT("revision"), GetPCGGraphRevision(Target.Graph));
+        Result->SetBoolField(TEXT("truncated"), Offset + Limit < Total);
+        Result->SetStringField(TEXT("revision"), Revision);
         Bridge->SendAutomationResponse(Socket, RequestId, true, TEXT("PCG parameters read."), Result);
         return true;
     }
@@ -125,6 +128,12 @@ bool HandlePCGParameters(UEngineWireSubsystem* Bridge, const FString& RequestId,
             Bridge->SendAutomationResponse(Socket, RequestId, false, TEXT("The parameter is referenced by loaded PCG nodes; no implicit cascade is permitted."), Result, TEXT("PARAMETER_IN_USE"));
             return true;
         }
+    }
+    FPCGReadBudget Budget;
+    if (!Budget.CheckParameters(Current) || !Budget.CheckParameters(&Staged))
+    {
+        Bridge->SendAutomationError(Socket, RequestId, TEXT("Staged parameter values exceed the bounded authored-state budget."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
+        return true;
     }
     FPCGEditState EditorState(Target.Graph);
     auto CapturedObjects = EditorState.GetObjects();

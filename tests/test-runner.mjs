@@ -6,9 +6,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
 import { expectedCondition as conditionFromExpectation, splitExpectedConditions } from './expectation-utils.mjs';
-import { evaluateAssertions, selectCaptureValues, withServerTimeout } from './test-runner-response-utils.mjs';
+import { evaluateAssertions, resolveResponsePath, selectCaptureValues, withServerTimeout } from './test-runner-response-utils.mjs';
 import { withFoldTwins } from './fold-twins.mjs';
 import { assertIsolatedProject } from './test-runner-isolation.mjs';
+import { pollPCGRead } from './test-runner-pcg-wait.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -540,7 +541,11 @@ export function evaluateExpectation(testCase, response) {
   const hasTimeout = /\btimeout\b/i.test(combined) || combined.includes('timed out');
   const explicitlyExpectsTimeout = primaryCondition === 'timeout' || primaryCondition.includes('timeout');
 
-  if (hasTimeout && !explicitlyExpectsTimeout) {
+  const retainedPCGTimeout = actualSuccess && testCase.toolName === 'manage_pcg' &&
+    testCase.arguments?.action === 'get_pcg_operation_status' &&
+    resolveResponsePath(response, 'structuredContent.result.state') === 'timed_out' &&
+    resolveResponsePath(response, 'structuredContent.result.operationErrorCode') === 'PCG_OPERATION_TIMEOUT';
+  if (hasTimeout && !explicitlyExpectsTimeout && !retainedPCGTimeout) {
     return {
       passed: false,
       reason: `Timeout detected (infrastructure failure) but test did not expect timeout as primary condition (expected: ${primaryCondition}): ${actualError || actualMessage}`
@@ -1504,14 +1509,17 @@ export async function runToolTests(toolName, suiteCases, { folder, isolatedProje
             `Missing captured test values: ${Array.from(new Set(missingCaptures)).join(', ')}`
           );
         }
-        const response = await callToolOnce(
+        const response = await pollPCGRead(resolvedCase, remaining => callToolOnce(
           {
             name: testCase.toolName,
             arguments: resolvedArgs,
             ...(testCase.consent === undefined ? {} : { consent: testCase.consent })
           },
-          testCaseTimeoutMs
-        );
+          Math.min(testCaseTimeoutMs, remaining ?? testCaseTimeoutMs)
+        ), candidate => {
+          const normalized = normalizeResponseForEvaluation(candidate);
+          return !evaluateExpectation(resolvedCase, normalized).passed || evaluateAssertions(resolvedCase, normalized).passed;
+        });
 
         const endTime = performance.now();
         const durationMs = endTime - startTime;
@@ -1548,6 +1556,10 @@ export async function runToolTests(toolName, suiteCases, { folder, isolatedProje
             ...responseSummary,
             response: normalizedResponse
           });
+          if (testCase.abortOnFailure === true) {
+            console.log('🛑 Required safety assertion failed; preserving owned fixtures and stopping the suite.');
+            break;
+          }
           if (isBridgeDisconnectedSignal(normalizedResponse) || isBridgeDisconnectedSignal(reason)) {
             console.log('🛑 Automation bridge is not connected; aborting remaining tests to avoid wasting time.');
             break;
@@ -1643,6 +1655,10 @@ export async function runToolTests(toolName, suiteCases, { folder, isolatedProje
           responseIsError: true,
           responseError: errorMessage
         });
+        if (testCase.abortOnFailure === true) {
+          console.log('🛑 Required safety step failed; preserving owned fixtures and stopping the suite.');
+          break;
+        }
         if (isBridgeDisconnectedSignal(errorMessage)) {
           console.log('🛑 Automation bridge is not connected; aborting remaining tests to avoid wasting time.');
           break;

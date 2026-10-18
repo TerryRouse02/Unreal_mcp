@@ -35,6 +35,8 @@ bool ConfigurePCGNode(UEngineWireSubsystem* Bridge, const FString& RequestId, co
     ApplyNodeMetadata(Node, Payload);
     Node->UpdateAfterSettingsChangeDuringCreation();
     Settings->PostEditChange();
+    if (GetPCGGraphRevision(Graph).IsEmpty())
+        return ReplyPCGEditFailure(Bridge, RequestId, Socket, State, TEXT("Edited state exceeds the authored read budget or has invalid dependencies."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
     TSharedPtr<FJsonObject> EditorState;
     if (!SyncPCGEditorGraph(Graph, EditorState, Error))
     {

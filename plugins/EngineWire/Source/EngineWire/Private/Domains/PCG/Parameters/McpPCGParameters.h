@@ -24,7 +24,8 @@ struct FPCGParameterTarget
 };
 bool ResolvePCGParameterTarget(const TSharedPtr<FJsonObject>& Payload, FPCGParameterTarget& Target, FString& OutError);
 bool BuildPCGParameterDesc(const TSharedPtr<FJsonObject>& Payload, FPropertyBagPropertyDesc& Desc, FString& OutError);
-TArray<TSharedPtr<FJsonValue>> ReadPCGParameters(const FPCGParameterTarget& Target);
+TArray<TSharedPtr<FJsonValue>> ReadPCGParameters(const FPCGParameterTarget& Target, const FString& Name = FString(),
+    int32 Offset = 0, int32 Limit = MAX_int32, int32* OutTotal = nullptr);
 bool StagePCGParameterValue(const FInstancedPropertyBag& Source, FName Name, const TSharedPtr<FJsonValue>& Value,
     FInstancedPropertyBag& OutBag, FString& OutError);
 bool CommitPCGParameterValue(UPCGGraphInterface* Target, FName Name, const FInstancedPropertyBag& Source, FString& OutError);

@@ -36,6 +36,11 @@ bool ValidatePCGNodeSettings(UPCGGraph* Graph, UPCGNode* Node, const FString& Su
         OutError = TEXT("The settings change would remove or replace existing PCG connections; disconnect them explicitly first.");
         return false;
     }
+    if (GetPCGGraphRevision(Staged.Get()).IsEmpty())
+    {
+        OutError = TEXT("The staged graph exceeds the authored read budget or has invalid dependencies.");
+        return false;
+    }
     TSet<FString> PreviousDiagnostics;
     for (const auto& Value : ValidatePCGEdges(Graph))
     {

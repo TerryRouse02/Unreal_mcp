@@ -1,5 +1,5 @@
 {
-  "catalogRevision": "383e509438f92811",
+  "catalogRevision": "249371ab1de7f72c",
   "recordCount": 423,
   "records": [
     {
@@ -81940,9 +81940,61 @@
               "type": "string",
               "description": "Created PCG graph asset path."
             },
+            "committed": {
+              "type": "boolean",
+              "description": "The requested in-memory creation/reuse completed; save failure can leave a created graph in memory."
+            },
+            "saved": {
+              "type": "boolean",
+              "description": "This request confirmed a durable graph-package save."
+            },
+            "rolledBack": {
+              "type": "boolean",
+              "description": "Whether explicit recovery was performed; failed disk writes are not represented as rollback."
+            },
+            "residualChanges": {
+              "type": "boolean",
+              "description": "A failed request left an owned in-memory asset to inspect or explicitly remove."
+            },
+            "subgraphPath": {
+              "type": "string",
+              "description": "Resolved reusable child graph path."
+            },
+            "parentGraphPath": {
+              "type": "string",
+              "description": "Resolved parent graph when attaching a node."
+            },
+            "nodeId": {
+              "type": "string",
+              "description": "New parent node, present only after attachment commits."
+            },
+            "subgraphSaved": {
+              "type": "boolean",
+              "description": "Child package save completed before parent attachment/save."
+            },
+            "parentCommitted": {
+              "type": "boolean",
+              "description": "Parent attachment remains committed in memory."
+            },
+            "parentSaved": {
+              "type": "boolean",
+              "description": "Parent package save was confirmed."
+            },
+            "partialSave": {
+              "type": "boolean",
+              "description": "A package was saved while another requested package write did not complete; inspect the per-package fields."
+            },
+            "atomic": {
+              "type": "boolean",
+              "description": "False: cross-package disk writes are not an atomic transaction."
+            },
+            "rollbackScope": {
+              "type": "string",
+              "description": "Parent authored-state recovery never claims cross-package disk rollback."
+            },
             "revision": {
               "type": "string",
-              "description": "Authored graph revision after synchronization."
+              "description": "Complete parent graph revision after attachment."
             },
             "consistent": {
               "type": "boolean",
@@ -81951,22 +82003,6 @@
             "available": {
               "type": "boolean",
               "description": "An editor representation exists."
-            },
-            "committed": {
-              "type": "boolean",
-              "description": "In-memory synchronization committed."
-            },
-            "saved": {
-              "type": "boolean",
-              "description": "The graph asset was saved."
-            },
-            "rolledBack": {
-              "type": "boolean",
-              "description": "Explicit failure recovery restored the previous state."
-            },
-            "residualChanges": {
-              "type": "boolean",
-              "description": "Recovery could not verify full restoration; the graph was not saved."
             },
             "previousRevision": {
               "type": "string",
@@ -82188,8 +82224,8 @@
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "46a2111c1df6958c6b0b1e3817490d0d6ad88f0d0dadeb568c508ecaaad356e6",
-        "content": "40823daa1795666eabc31b4407153b62919d2a5953ce6e233127dafece71f8be"
+        "schema": "0cfe0f56e8792c13dea74dd62afd3710e8da8a5f2d115fb95ac854fea17b3757",
+        "content": "c6d3c9a0785243afbe35f4cd20f382c12162e985c4e46cf5a4cb6a2efd577db0"
       }
     },
     {

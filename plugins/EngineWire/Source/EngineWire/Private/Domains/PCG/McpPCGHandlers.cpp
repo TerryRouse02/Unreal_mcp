@@ -42,6 +42,11 @@ bool UEngineWireSubsystem::HandleManagePCGAction(
     if (McpPCGHandlers::HandlePCGDiscovery(this, RequestId, SubAction, Payload, Socket)) return true;
     if (McpPCGHandlers::HandlePCGExecution(this, RequestId, SubAction, Payload, Socket)) return true;
 
+    if (SubAction != TEXT("get_pcg_parameters") && GEditor && GEditor->IsTransactionActive())
+    {
+        SendAutomationError(Socket, RequestId, TEXT("Finish the caller's editor transaction before mutating PCG state."), TEXT("EDITOR_BUSY"));
+        return true;
+    }
     const bool bSave = GetJsonBoolField(Payload, TEXT("save"), true);
     if (McpPCGHandlers::HandlePCGParameters(this, RequestId, SubAction, Payload, Socket, bSave)) return true;
 

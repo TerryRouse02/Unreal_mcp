@@ -78,7 +78,13 @@ bool HandlePCGEditOperations(UEngineWireSubsystem* Bridge, const FString& Reques
     Preflight.bDestructive = bDestructive;
     TArray<TSharedPtr<FJsonValue>> StagedResults;
     int32 FailedIndex = INDEX_NONE;
-    if (!RunOperations(Staged.Get(), Operations, Preflight, StagedResults, Error, Code, FailedIndex))
+    const bool bPreflightApplied = RunOperations(Staged.Get(), Operations, Preflight, StagedResults, Error, Code, FailedIndex);
+    if (bPreflightApplied && GetPCGGraphRevision(Staged.Get()).IsEmpty())
+    {
+        Error = TEXT("The edited graph exceeds the authored read budget or has invalid dependencies.");
+        Code = TEXT("PCG_SNAPSHOT_UNAVAILABLE");
+    }
+    if (!bPreflightApplied || Code == TEXT("PCG_SNAPSHOT_UNAVAILABLE"))
     {
         auto Result = McpHandlerUtils::CreateResultObject();
         Result->SetBoolField(TEXT("committed"), false);

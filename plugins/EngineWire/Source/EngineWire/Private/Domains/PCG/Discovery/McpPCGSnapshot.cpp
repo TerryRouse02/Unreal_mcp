@@ -1,7 +1,5 @@
 #include "Domains/PCG/Discovery/McpPCGRead.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
-#include "MCP/Gateway/McpNativeGatewayCanonicalJson.h"
-#include "Misc/SecureHash.h"
 #include "UObject/UObjectHash.h"
 #include "EdGraph/EdGraph.h"
 #include "Domains/PCG/Editor/McpPCGEditor.h"
@@ -67,6 +65,37 @@ UEdGraph* FindExistingPCGEditorGraph(UPCGGraph* Graph, bool& bOutAmbiguous)
     return Result;
 }
 
+bool IsPCGAuthoredObject(const UObject* Object, const UObject* Root)
+{
+    if (!IsValid(Object) || !Root) return false;
+    const FObjectPropertyBase* HierarchyProperty = Cast<UPCGGraph>(Root)
+        ? FindFProperty<FObjectPropertyBase>(Root->GetClass(), TEXT("UserParameterHierarchyRoot")) : nullptr;
+    // UE lazily populates this editor-only presentation tree when the details panel opens.
+    // Actual parameter schema/values are captured separately from UserParameters.
+    const UObject* EditorHierarchy = HierarchyProperty && HierarchyProperty->HasAnyPropertyFlags(CPF_EditorOnly)
+        ? HierarchyProperty->GetObjectPropertyValue_InContainer(Root) : nullptr;
+    const UObject* Current = Object;
+    for (; Current && Current != Root; Current = Current->GetOuter())
+    {
+        if (Current == EditorHierarchy || Current->HasAnyFlags(RF_Transient | RF_ClassDefaultObject | RF_BeginDestroyed | RF_FinishDestroyed)) return false;
+        if (const UPCGNode* Node = Cast<UPCGNode>(Current))
+        {
+            const UPCGGraph* Graph = Cast<UPCGGraph>(Node->GetOuter());
+            if (!Graph || (Graph->GetInputNode() != Node && Graph->GetOutputNode() != Node && !Graph->GetNodes().Contains(Node))) return false;
+        }
+        if (const UPCGPin* Pin = Cast<UPCGPin>(Current))
+        {
+            if (!Pin->Node || (!Pin->Node->GetInputPins().Contains(Pin) && !Pin->Node->GetOutputPins().Contains(Pin))) return false;
+        }
+        // Native Undo and dynamic pin rebuilds retain detached objects until later GC.
+        if (const UPCGEdge* Edge = Cast<UPCGEdge>(Current))
+        {
+            if (!Edge->IsValid() || !Edge->InputPin->Edges.Contains(Edge) || !Edge->OutputPin->Edges.Contains(Edge)) return false;
+        }
+    }
+    return Current == Root;
+}
+
 TSharedPtr<FJsonObject> ReadPCGSettings(UObject* Settings)
 {
     auto Result = ReadAuthoredProperties(Settings);
@@ -78,7 +107,7 @@ TSharedPtr<FJsonObject> ReadPCGSettings(UObject* Settings)
     auto Owned = MakeShared<FJsonObject>();
     for (UObject* Child : Children)
     {
-        if (!Child || Child->HasAnyFlags(RF_ClassDefaultObject)) continue;
+        if (!IsPCGAuthoredObject(Child, Settings)) continue;
         auto Data = ReadAuthoredProperties(Child);
         Data->SetStringField(TEXT("$class"), Child->GetClass()->GetPathName());
         Owned->SetObjectField(Child->GetPathName(Settings), Data);
@@ -111,7 +140,7 @@ TSharedPtr<FJsonObject> ReadPCGNode(UPCGGraph* Graph, UPCGNode* Node, bool bIncl
     return Result;
 }
 
-TSharedPtr<FJsonObject> ReadPCGGraph(UPCGGraph* Graph, bool bIncludeSettings)
+TSharedPtr<FJsonObject> ReadPCGGraph(UPCGGraph* Graph, bool bIncludeSettings, int32 Offset, int32 Limit, int32 EdgeOffset, int32 EdgeLimit, const FString& NodeId)
 {
     auto Result = MakeShared<FJsonObject>();
     TArray<UPCGNode*> Nodes;
@@ -119,9 +148,14 @@ TSharedPtr<FJsonObject> ReadPCGGraph(UPCGGraph* Graph, bool bIncludeSettings)
     for (UPCGNode* Node : Graph->GetNodes()) if (Node) Nodes.AddUnique(Node);
     if (Graph->GetOutputNode()) Nodes.AddUnique(Graph->GetOutputNode());
     TArray<TSharedPtr<FJsonValue>> NodeData, Edges;
+    int32 NodeTotal = 0, EdgeTotal = 0;
     for (UPCGNode* Node : Nodes)
     {
-        NodeData.Add(MakeShared<FJsonValueObject>(ReadPCGNode(Graph, Node, bIncludeSettings)));
+        if (NodeId.IsEmpty() || Node->GetName() == NodeId)
+        {
+            if (NodeTotal++ >= Offset && NodeData.Num() < Limit)
+                NodeData.Add(MakeShared<FJsonValueObject>(ReadPCGNode(Graph, Node, bIncludeSettings)));
+        }
         for (UPCGPin* Pin : Node->GetOutputPins())
         {
             if (!Pin) continue;
@@ -129,6 +163,7 @@ TSharedPtr<FJsonObject> ReadPCGGraph(UPCGGraph* Graph, bool bIncludeSettings)
             {
                 UPCGPin* Target = Edge && Edge->IsValid() ? Edge->GetOtherPin(Pin) : nullptr;
                 if (!Target || !Target->Node) continue;
+                if (EdgeTotal++ < EdgeOffset || Edges.Num() >= EdgeLimit) continue;
                 auto Data = MakeShared<FJsonObject>();
                 Data->SetStringField(TEXT("sourceNodeId"), Node->GetName());
                 Data->SetStringField(TEXT("sourcePin"), Pin->Properties.Label.ToString());
@@ -140,6 +175,8 @@ TSharedPtr<FJsonObject> ReadPCGGraph(UPCGGraph* Graph, bool bIncludeSettings)
     }
     Result->SetArrayField(TEXT("nodes"), NodeData);
     Result->SetArrayField(TEXT("edges"), Edges);
+    Result->SetNumberField(TEXT("nodeTotal"), NodeTotal);
+    Result->SetNumberField(TEXT("edgeTotal"), EdgeTotal);
     Result->SetObjectField(TEXT("graphSettings"), ReadAuthoredProperties(Graph));
     Result->SetObjectField(TEXT("editorData"), McpPropertyReflection::ExportPropertiesToJson(Graph,
         {FName(TEXT("CommentNodes")), FName(TEXT("ExtraEditorNodes"))}));
@@ -153,51 +190,16 @@ TSharedPtr<FJsonObject> ReadPCGGraph(UPCGGraph* Graph, bool bIncludeSettings)
     return Result;
 }
 
-FString GetPCGGraphRevision(UPCGGraph* Graph)
-{
-    if (!Graph) return FString();
-    auto State = ReadPCGGraph(Graph, true);
-    auto Exact = MakeShared<FJsonObject>();
-    TArray<UObject*> Objects;
-    GetObjectsWithOuter(Graph, Objects, true);
-    Objects.Insert(Graph, 0);
-    const TArray<FName> ExtraProperties = { FName(TEXT("PositionX")), FName(TEXT("PositionY")), FName(TEXT("NodeTitle")),
-        FName(TEXT("NodeTitleColor")), FName(TEXT("NodeComment")), FName(TEXT("CommentNodes")), FName(TEXT("bHidden")),
-        FName(TEXT("bCommentBubblePinned")), FName(TEXT("bCommentBubbleVisible")), FName(TEXT("UserParameters")) };
-    bool bAmbiguous = false;
-    UEdGraph* Editor = FindExistingPCGEditorGraph(Graph, bAmbiguous);
-    if (bAmbiguous) return FString();
-    for (UObject* Object : Objects)
-    {
-        if (!Object || Object->HasAnyFlags(RF_ClassDefaultObject) || (Editor && (Object == Editor || Object->IsIn(Editor)))) continue;
-        const FString Hash = McpPropertyReflection::FingerprintEditableProperties(Object, ExtraProperties);
-        if (Hash.IsEmpty()) return FString();
-        Exact->SetStringField(Object == Graph ? TEXT("$graph") : Object->GetPathName(Graph), Hash);
-    }
-#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
-    const FInstancedPropertyBag* Bag = Graph->GetUserParametersStruct();
-    if (Bag && Bag->GetPropertyBagStruct())
-    {
-        for (const FPropertyBagPropertyDesc& Desc : Bag->GetPropertyBagStruct()->GetPropertyDescs())
-        {
-            if (!Desc.CachedProperty) continue;
-            const FString Hash = McpPropertyReflection::FingerprintReflectedValue(Desc.CachedProperty,
-                const_cast<uint8*>(Bag->GetValue().GetMemory()));
-            if (Hash.IsEmpty()) return FString();
-            Exact->SetStringField(TEXT("$parameter:") + Desc.ID.ToString(), Hash);
-        }
-    }
-#endif
-    State->SetObjectField(TEXT("exactAuthoredState"), Exact);
-    FString Json;
-    if (!McpCanonicalJsonObject(State, Json, true)) return FString();
-    return FMD5::HashAnsiString(*Json);
-}
-
 bool CheckPCGGraphRevision(UPCGGraph* Graph, const TSharedPtr<FJsonObject>& Payload, FString& OutError)
 {
+    const FString Revision = GetPCGGraphRevision(Graph);
+    if (Revision.IsEmpty())
+    {
+        OutError = TEXT("A complete PCG graph revision is unavailable: the authored read budget, dependency depth or graph integrity limit was exceeded.");
+        return false;
+    }
     FString Expected;
-    if (Payload->TryGetStringField(TEXT("expectedGraphRevision"), Expected) && Expected != GetPCGGraphRevision(Graph))
+    if (Payload->TryGetStringField(TEXT("expectedGraphRevision"), Expected) && Expected != Revision)
     {
         OutError = TEXT("The PCG graph changed since it was read; read it again before editing.");
         return false;

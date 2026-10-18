@@ -17,6 +17,61 @@ instance.set_editor_property('Graph', unreal.load_asset('${graphPath}'))
 assert instance.get_editor_property('Graph').get_path_name() == '${graphPath}.Graph'
 assert instance.get_path_name() == '${instancePath}.Instance'
 `;
+const typedParameters = [
+  { name: 'BoolValue', type: 'Bool', value: true, readback: true },
+  { name: 'BoolList', type: 'Bool', container: 'array', value: [true, false], readback: true },
+  { name: 'ByteValue', type: 'Byte', value: 7, readback: 7 },
+  { name: 'ByteList', type: 'Byte', container: 'array', value: [7, 8], readback: 7 },
+  { name: 'Int32Value', type: 'Int32', value: 123, readback: 123 },
+  { name: 'Int64Value', type: 'Int64', value: 1234567890123, readback: 1234567890123 },
+  { name: 'Int64List', type: 'Int64', container: 'array', value: [123, 456], readback: 123 },
+  { name: 'FloatValue', type: 'Float', value: 1.25, readback: 1.25 },
+  { name: 'FloatList', type: 'Float', container: 'array', value: [1.25, 2.5], readback: 1.25 },
+  { name: 'DoubleList', type: 'Double', container: 'array', value: [2.5, 5.25], readback: 2.5 },
+  { name: 'NameValue', type: 'Name', value: 'NativeName', readback: 'NativeName' },
+  { name: 'NameList', type: 'Name', container: 'array', value: ['NativeName', 'SecondName'], readback: 'NativeName' },
+  { name: 'StringValue', type: 'String', value: 'Native string', readback: 'Native string' },
+  { name: 'StringList', type: 'String', container: 'array', value: ['Native string', 'Second string'], readback: 'Native string' },
+  { name: 'EnumValue', type: 'Enum', typeObject: '/Script/Engine.ECollisionChannel', value: 'ECC_WorldStatic', readback: 'ECC_WorldStatic' },
+  { name: 'EnumList', type: 'Enum', typeObject: '/Script/Engine.ECollisionChannel', container: 'array', value: ['ECC_WorldStatic', 'ECC_WorldDynamic'], readback: 'ECC_WorldStatic' },
+  { name: 'VectorList', type: 'Struct', typeObject: '/Script/CoreUObject.Vector', container: 'array', value: [{ x: 1, y: 2, z: 3 }, { x: 4, y: 5, z: 6 }], readback: [1, 2, 3] },
+  { name: 'RotatorValue', type: 'Struct', typeObject: '/Script/CoreUObject.Rotator', value: { pitch: 10, yaw: 20, roll: 30 }, readback: [10, 20, 30] },
+  { name: 'RotatorList', type: 'Struct', typeObject: '/Script/CoreUObject.Rotator', container: 'array', value: [{ pitch: 10, yaw: 20, roll: 30 }, { pitch: 0, yaw: 45, roll: 0 }], readback: [10, 20, 30] },
+  { name: 'TransformValue', type: 'Struct', typeObject: '/Script/CoreUObject.Transform', value: { rotation: { x: 0, y: 0, z: 0, w: 1 }, translation: { x: 1, y: 2, z: 3 }, scale3d: { x: 1, y: 1, z: 1 } } },
+  { name: 'TransformList', type: 'Struct', typeObject: '/Script/CoreUObject.Transform', container: 'array', value: [
+    { rotation: { x: 0, y: 0, z: 0, w: 1 }, translation: { x: 1, y: 2, z: 3 }, scale3d: { x: 1, y: 1, z: 1 } },
+    { rotation: { x: 0, y: 0.7071068, z: 0, w: 0.7071068 }, translation: { x: 4, y: 5, z: 6 }, scale3d: { x: 2, y: 2, z: 2 } },
+  ] },
+  { name: 'ObjectValue', type: 'Object', typeObject: '/Script/Engine.StaticMesh', value: '/Engine/BasicShapes/Cube.Cube', readback: '/Engine/BasicShapes/Cube.Cube' },
+  { name: 'ObjectList', type: 'Object', typeObject: '/Script/Engine.StaticMesh', container: 'array', value: ['/Engine/BasicShapes/Cube.Cube', '/Engine/BasicShapes/Sphere.Sphere'], readback: '/Engine/BasicShapes/Cube.Cube' },
+  { name: 'ClassValue', type: 'Class', typeObject: '/Script/Engine.Actor', value: '/Script/Engine.StaticMeshActor', readback: '/Script/Engine.StaticMeshActor' },
+  { name: 'ClassList', type: 'Class', typeObject: '/Script/Engine.Actor', container: 'array', value: ['/Script/Engine.StaticMeshActor', '/Script/Engine.StaticMeshActor'], readback: '/Script/Engine.StaticMeshActor' },
+  { name: 'SoftObjectValue', type: 'SoftObject', typeObject: '/Script/Engine.StaticMesh', value: '/Engine/BasicShapes/Cube.Cube', readback: '/Engine/BasicShapes/Cube.Cube' },
+  { name: 'SoftObjectList', type: 'SoftObject', typeObject: '/Script/Engine.StaticMesh', container: 'array', value: ['/Engine/BasicShapes/Cube.Cube', '/Engine/BasicShapes/Sphere.Sphere'], readback: '/Engine/BasicShapes/Cube.Cube' },
+  { name: 'SoftClassValue', type: 'SoftClass', typeObject: '/Script/Engine.Actor', value: '/Script/Engine.StaticMeshActor', readback: '/Script/Engine.StaticMeshActor' },
+  { name: 'SoftClassList', type: 'SoftClass', typeObject: '/Script/Engine.Actor', container: 'array', value: ['/Script/Engine.StaticMeshActor', '/Script/Engine.StaticMeshActor'], readback: '/Script/Engine.StaticMeshActor' },
+];
+const typedParameterCases = typedParameters.flatMap(parameter => {
+  const container = parameter.container ?? 'none';
+  const arguments_ = { action: 'add_pcg_parameter', graphPath, name: parameter.name, type: parameter.type,
+    ...(parameter.typeObject ? { typeObject: parameter.typeObject } : {}), container, value: parameter.value, save: false };
+  const assertions = [{ path: 'structuredContent.result.parameters.0.name', equals: parameter.name }];
+  if (container === 'array') assertions.push({ path: 'structuredContent.result.parameters.0.value', length: parameter.value.length });
+  if (parameter.readback !== undefined) {
+    const valuePath = `structuredContent.result.parameters.0.value${container === 'array' ? '.0' : ''}`;
+    if (Array.isArray(parameter.readback)) {
+      parameter.readback.forEach((value, index) => assertions.push({ path: `${valuePath}.${index}`, equals: value }));
+    } else assertions.push({ path: valuePath, equals: parameter.readback });
+  }
+  if (parameter.name.startsWith('Transform')) {
+    assertions.push({ path: `structuredContent.result.parameters.0.value${container === 'array' ? '.0' : ''}`,
+      includes: 'Translation=(X=1.000000,Y=2.000000,Z=3.000000)' });
+  }
+  return [
+    { scenario: `Add ${container} ${parameter.type} PCG parameter ${parameter.name}`, toolName: 'manage_pcg', arguments: arguments_, expected: 'success' },
+    read(`Read back ${parameter.type} PCG parameter ${parameter.name}`, parameter.name, { assertions }),
+  ];
+});
 const cases = [
   { scenario: 'Setup: create an exclusively owned parameter graph', toolName: 'manage_pcg',
     arguments: { action: 'create_pcg_graph', graphPath, save: false }, expected: 'success',
@@ -34,6 +89,17 @@ const cases = [
     arguments: { action: 'add_pcg_parameter', graphPath, name: 'Seeds', type: 'Int32', container: 'array', value: [1, 2, 3], save: false }, expected: 'success' },
   { scenario: 'Add a native Vector parameter using typeObject', toolName: 'manage_pcg',
     arguments: { action: 'add_pcg_parameter', graphPath, name: 'Offset', type: 'Struct', typeObject: '/Script/CoreUObject.Vector', value: { x: 1, y: 2, z: 3 }, save: false }, expected: 'success' },
+  ...typedParameterCases,
+  read('Capture a boolean array before a rejected element', 'BoolList', { captureResult: [{ key: 'beforeInvalidBoolArray', fromField: 'result.revision' }] }),
+  { scenario: 'An invalid boolean array element cannot partially replace the source array', toolName: 'manage_pcg',
+    arguments: { action: 'set_pcg_parameter', graphPath, name: 'BoolList', value: [true, 'invalid-bool'], save: false },
+    expected: { condition: 'error', errorPattern: 'INVALID_PARAMETER_VALUE' } },
+  read('A refused boolean array edit leaves its value and revision unchanged', 'BoolList', { assertions: [
+    { path: 'structuredContent.result.revision', equals: captured('beforeInvalidBoolArray') },
+    { path: 'structuredContent.result.parameters.0.value', length: 2 },
+    { path: 'structuredContent.result.parameters.0.value.0', equals: true },
+    { path: 'structuredContent.result.parameters.0.value.1', equals: false },
+  ] }),
   read('Capture state before a rejected value', 'Spacing', { captureResult: [{ key: 'beforeInvalid', fromField: 'result.revision' }] }),
   { scenario: 'A bad value cannot partially change a graph default', toolName: 'manage_pcg',
     arguments: { action: 'set_pcg_parameter', graphPath, name: 'Spacing', value: 'invalid-double', save: false },
@@ -57,6 +123,46 @@ const cases = [
   { scenario: 'Read graph-instance inheritance by its exact asset path', toolName: 'manage_pcg',
     arguments: { action: 'get_pcg_parameters', target: 'graphInstance', graphInstancePath: instancePath, name: 'Spacing', offset: 0, limit: 1 }, expected: 'success',
     assertions: [{ path: 'structuredContent.result.parameters.0.value', equals: 200 }, { path: 'structuredContent.result.parameters.0.overridden', equals: false }] },
+  { scenario: 'Change a complex graph default after creating the instance', toolName: 'manage_pcg',
+    arguments: { action: 'set_pcg_parameter', target: 'graph', graphPath, name: 'Offset', value: { x: 4, y: 5, z: 6 }, save: false }, expected: 'success' },
+  read('Read the updated complex graph default', 'Offset', { assertions: [
+    { path: 'structuredContent.result.parameters.0.value.0', equals: 4 },
+    { path: 'structuredContent.result.parameters.0.value.1', equals: 5 },
+    { path: 'structuredContent.result.parameters.0.value.2', equals: 6 },
+  ] }),
+  { scenario: 'An unmodified instance inherits the updated complex default', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_parameters', target: 'graphInstance', graphInstancePath: instancePath, name: 'Offset', offset: 0, limit: 1 }, expected: 'success',
+    assertions: [
+      { path: 'structuredContent.result.parameters.0.value.0', equals: 4 },
+      { path: 'structuredContent.result.parameters.0.value.1', equals: 5 },
+      { path: 'structuredContent.result.parameters.0.value.2', equals: 6 },
+      { path: 'structuredContent.result.parameters.0.overridden', equals: false },
+    ] },
+  { scenario: 'Override only the complex instance value', toolName: 'manage_pcg',
+    arguments: { action: 'set_pcg_parameter', target: 'graphInstance', graphInstancePath: instancePath, name: 'Offset', value: { x: 9, y: 8, z: 7 }, save: false }, expected: 'success' },
+  { scenario: 'Read the complex instance override independently', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_parameters', target: 'graphInstance', graphInstancePath: instancePath, name: 'Offset', offset: 0, limit: 1 }, expected: 'success',
+    assertions: [
+      { path: 'structuredContent.result.parameters.0.value.0', equals: 9 },
+      { path: 'structuredContent.result.parameters.0.value.1', equals: 8 },
+      { path: 'structuredContent.result.parameters.0.value.2', equals: 7 },
+      { path: 'structuredContent.result.parameters.0.overridden', equals: true },
+    ] },
+  read('The instance override does not change the complex graph default', 'Offset', { assertions: [
+    { path: 'structuredContent.result.parameters.0.value.0', equals: 4 },
+    { path: 'structuredContent.result.parameters.0.value.1', equals: 5 },
+    { path: 'structuredContent.result.parameters.0.value.2', equals: 6 },
+  ] }),
+  { scenario: 'Reset the complex instance override and resume default inheritance', toolName: 'manage_pcg',
+    arguments: { action: 'reset_pcg_parameter_override', target: 'graphInstance', graphInstancePath: instancePath, name: 'Offset', save: false }, expected: 'success' },
+  { scenario: 'A reset complex instance override inherits the current default', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_parameters', target: 'graphInstance', graphInstancePath: instancePath, name: 'Offset', offset: 0, limit: 1 }, expected: 'success',
+    assertions: [
+      { path: 'structuredContent.result.parameters.0.value.0', equals: 4 },
+      { path: 'structuredContent.result.parameters.0.value.1', equals: 5 },
+      { path: 'structuredContent.result.parameters.0.value.2', equals: 6 },
+      { path: 'structuredContent.result.parameters.0.overridden', equals: false },
+    ] },
   { scenario: 'Override a single graph instance without changing the default', toolName: 'manage_pcg',
     arguments: { action: 'set_pcg_parameter', target: 'graphInstance', graphInstancePath: instancePath, name: 'Spacing', value: 333, save: false }, expected: 'success' },
   { scenario: 'Reset the instance override and resume inheritance', toolName: 'manage_pcg',

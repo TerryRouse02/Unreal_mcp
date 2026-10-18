@@ -61,15 +61,19 @@ bool ResolvePCGParameterTarget(const TSharedPtr<FJsonObject>& Payload, FPCGParam
     return true;
 }
 
-TArray<TSharedPtr<FJsonValue>> ReadPCGParameters(const FPCGParameterTarget& Target)
+TArray<TSharedPtr<FJsonValue>> ReadPCGParameters(const FPCGParameterTarget& Target, const FString& Name, int32 Offset, int32 Limit, int32* OutTotal)
 {
     TArray<TSharedPtr<FJsonValue>> Result;
+    if (OutTotal) *OutTotal = 0;
+    int32 Total = 0;
     const FInstancedPropertyBag* Bag = Target.Interface->GetUserParametersStruct();
     const FInstancedPropertyBag* Defaults = Target.Graph->GetUserParametersStruct();
     if (!Bag || !Bag->GetPropertyBagStruct()) return Result;
     const UPCGGraphInstance* Instance = Cast<UPCGGraphInstance>(Target.Interface);
     for (const FPropertyBagPropertyDesc& Desc : Bag->GetPropertyBagStruct()->GetPropertyDescs())
     {
+        if (!Name.IsEmpty() && Desc.Name.ToString() != Name) continue;
+        if (Total++ < Offset || Result.Num() >= Limit) continue;
         auto Row = MakeShared<FJsonObject>();
         Row->SetStringField(TEXT("name"), Desc.Name.ToString());
         Row->SetStringField(TEXT("id"), Desc.ID.ToString(EGuidFormats::DigitsWithHyphens));
@@ -88,6 +92,7 @@ TArray<TSharedPtr<FJsonValue>> ReadPCGParameters(const FPCGParameterTarget& Targ
         }
         Result.Add(MakeShared<FJsonValueObject>(Row));
     }
+    if (OutTotal) *OutTotal = Total;
     return Result;
 }
 }

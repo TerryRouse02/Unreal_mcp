@@ -2,6 +2,7 @@
 #if MCP_HAS_PCG_EXECUTION
 #include "Core/Requests/McpRequestOriginRegistry.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
+#include "Domains/PCG/Discovery/McpPCGBudget.h"
 #include "Foundation/BridgeHelpers/Security/McpSubobjectPath.h"
 #include "MCP/Gateway/McpNativeGatewayCanonicalJson.h"
 #include "Misc/SecureHash.h"
@@ -40,26 +41,27 @@ FString GetPCGInstanceRevision(UPCGComponent* Component)
     UPCGGraphInstance* Instance = Component ? Component->GetGraphInstance() : nullptr;
     const FInstancedPropertyBag* Bag = Instance ? Instance->GetUserParametersStruct() : nullptr;
     auto Values = MakeShared<FJsonObject>();
-    if (!Component) return FString();
+    FPCGReadBudget Budget;
+    if (!Component || !Budget.CheckParameters(Bag)) return FString();
     Values->SetNumberField(TEXT("componentSeed"), Component->Seed);
     Values->SetNumberField(TEXT("generationGridSize"), Component->GetGenerationGridSize());
     if (!Bag || !Bag->GetPropertyBagStruct())
     {
         FString Json;
-        return McpCanonicalJsonObject(Values, Json, true) ? FMD5::HashAnsiString(*Json) : FString();
+        return McpCanonicalJsonObject(Values, Json, true) && Budget.IsWithinTime() ? FMD5::HashAnsiString(*Json) : FString();
     }
     for (const FPropertyBagPropertyDesc& Desc : Bag->GetPropertyBagStruct()->GetPropertyDescs())
     {
         if (!Desc.CachedProperty) return FString();
         const FString Hash = McpPropertyReflection::FingerprintReflectedValue(Desc.CachedProperty, const_cast<uint8*>(Bag->GetValue().GetMemory()));
-        if (Hash.IsEmpty()) return FString();
+        if (Hash.IsEmpty() || !Budget.IsWithinTime()) return FString();
         auto Parameter = MakeShared<FJsonObject>();
         Parameter->SetStringField(TEXT("valueHash"), Hash);
         Parameter->SetBoolField(TEXT("overridden"), Instance->IsPropertyOverridden(Desc.CachedProperty));
         Values->SetObjectField(Desc.ID.ToString(), Parameter);
     }
     FString Json;
-    return McpCanonicalJsonObject(Values, Json, true) ? FMD5::HashAnsiString(*Json) : FString();
+    return McpCanonicalJsonObject(Values, Json, true) && Budget.IsWithinTime() ? FMD5::HashAnsiString(*Json) : FString();
 }
 }
 #endif

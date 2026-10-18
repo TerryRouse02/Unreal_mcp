@@ -79,7 +79,13 @@ bool AdvanceOperation(const TSharedPtr<FPCGOperation>& Op)
     {
         UPCGGraph* Graph = Component->GetGraph();
         const FString Revision = Graph ? GetPCGGraphRevision(Graph) : TEXT("no_graph");
-        if ((Op->Kind == TEXT("generate") && (Graph != Op->Graph.Get() || Revision != Op->GraphRevision || GetPCGInstanceRevision(Component) != Op->InstanceRevision)))
+        const FString InstanceRevision = Op->Kind == TEXT("generate") ? GetPCGInstanceRevision(Component) : FString();
+        if (Op->Kind == TEXT("generate") && (Revision.IsEmpty() || InstanceRevision.IsEmpty()))
+        {
+            FinishPCGOperation(Op, TEXT("input_unavailable"), TEXT("A complete bounded graph or instance revision is unavailable; native work may continue."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
+            return bBusy;
+        }
+        if ((Op->Kind == TEXT("generate") && (Graph != Op->Graph.Get() || Revision != Op->GraphRevision || InstanceRevision != Op->InstanceRevision)))
         {
             FinishPCGOperation(Op, TEXT("graph_changed"), TEXT("Graph, component seed or parameter values changed during this operation; no unchanged-version success is claimed."), TEXT("PCG_INPUT_CHANGED"));
             return bBusy;

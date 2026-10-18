@@ -9,7 +9,7 @@ const captured = key => '${captured:' + key + '}';
 const componentPath = captured('component');
 const generate = (scenario, count, extra = {}) => ({ scenario, toolName: 'manage_pcg',
   arguments: { action: 'generate_pcg_graph', componentPath, force: true, timeoutSeconds: 30, save: false, ...extra },
-  timeoutMs: 45000, expected: 'success', assertions: [
+  timeoutMs: 45000, expected: 'success', abortOnFailure: true, assertions: [
     { path: 'structuredContent.result.state', equals: 'succeeded' },
     { path: 'structuredContent.result.nativeGenerated', equals: true },
     { path: 'structuredContent.result.diagnosticsAvailable', equals: true },
@@ -43,6 +43,16 @@ const cases = [
     captureResult: [{ key: 'component', fromField: 'result.componentPath' }],
     assertions: [{ path: 'structuredContent.result.taskId', gte: 0 }] },
   generate('Confirm this generation produces 100 instances', 100, { expectedGraphRevision: captured('readyRevision') }),
+  { scenario: 'A stale generation preflight refuses before scheduling native work', toolName: 'manage_pcg',
+    arguments: { action: 'generate_pcg_graph', componentPath, expectedGraphRevision: captured('emptyRevision'), save: false },
+    expected: { condition: 'error', errorPattern: 'STALE_STATE' }, abortOnFailure: true },
+  { scenario: 'Stale generation preserves the authored graph revision', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_graph', graphPath }, expected: 'success', abortOnFailure: true,
+    assertions: [{ path: 'structuredContent.result.revision', equals: captured('readyRevision') }] },
+  { scenario: 'Stale generation preserves idle products rather than starting another task', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_component_results', componentPath, sampleLimit: 0 }, expected: 'success', abortOnFailure: true,
+    assertions: [{ path: 'structuredContent.result.generating', equals: false },
+      { path: 'structuredContent.result.cleaning', equals: false }, { path: 'structuredContent.result.instanceCount', equals: 100 }] },
   { scenario: 'Read the retained operation for its exact component', toolName: 'manage_pcg',
     arguments: { action: 'get_pcg_operation_status', componentPath, operationId: captured('operation') }, expected: 'success',
     assertions: [{ path: 'structuredContent.result.succeeded', equals: true }, { path: 'structuredContent.result.engineStillRunning', equals: false }] },
@@ -70,6 +80,12 @@ const cases = [
     assertions: [{ path: 'structuredContent.result.state', equals: 'succeeded' }, { path: 'structuredContent.result.resources.instanceCount', equals: 0 }] },
   { scenario: 'A nonmanaged actor survives PCG cleanup', toolName: 'inspect', arguments: { action: 'get_actor_details', actorName: nonManaged }, expected: 'success' },
   generate('The cleaned component can generate again', 25),
+  { scenario: 'Require native idle before deleting only this run’s fixtures', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_component_results', componentPath, sampleLimit: 0 }, expected: 'success',
+    pollUntil: { timeoutMs: 30000, intervalMs: 1000 }, abortOnFailure: true, assertions: [
+      { path: 'structuredContent.result.generating', equals: false },
+      { path: 'structuredContent.result.cleaning', equals: false },
+    ] },
   { scenario: 'Cleanup: remove only actors created by this run', toolName: 'control_actor',
     arguments: { action: 'delete', actorNames: [actorName, nonManaged] }, expected: 'success',
     consent: { capability: 'control_actor.delete', acknowledge: 'explicit' } },

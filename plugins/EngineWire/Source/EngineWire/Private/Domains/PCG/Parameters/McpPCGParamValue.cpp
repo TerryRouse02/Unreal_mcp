@@ -1,12 +1,35 @@
 #include "Domains/PCG/Parameters/McpPCGParameters.h"
+#include "Domains/PCG/Discovery/McpPCGBudget.h"
 #include "Foundation/BridgeHelpers/Properties/McpPropApply.h"
 
 #if MCP_HAS_PCG_PARAMETERS
 namespace McpPCGHandlers
 {
+namespace
+{
+bool ValidateBoolean(const TSharedPtr<FJsonValue>& Value, FString& OutError)
+{
+    if (Value.IsValid())
+    {
+        if (Value->Type == EJson::Boolean) return true;
+        if (Value->Type == EJson::Number && (Value->AsNumber() == 0.0 || Value->AsNumber() == 1.0)) return true;
+        if (Value->Type == EJson::String &&
+            (Value->AsString().Equals(TEXT("true"), ESearchCase::IgnoreCase) || Value->AsString().Equals(TEXT("false"), ESearchCase::IgnoreCase))) return true;
+    }
+    OutError = TEXT("Bool parameters require a boolean, true/false string, or numeric zero/one.");
+    return false;
+}
+}
+
 bool StagePCGParameterValue(const FInstancedPropertyBag& Source, FName Name, const TSharedPtr<FJsonValue>& Value,
     FInstancedPropertyBag& OutBag, FString& OutError)
 {
+    FPCGReadBudget Budget;
+    if (!Budget.CheckParameters(&Source))
+    {
+        OutError = TEXT("The source parameter values exceed the bounded authored-state budget.");
+        return false;
+    }
     OutBag = Source;
     const FPropertyBagPropertyDesc* Desc = OutBag.FindPropertyDescByName(Name);
     if (!Desc || !Desc->CachedProperty)
@@ -44,10 +67,12 @@ bool StagePCGParameterValue(const FInstancedPropertyBag& Source, FName Name, con
         Values.AddValues(Value->AsArray().Num());
         for (int32 Index = 0; Index < Value->AsArray().Num(); ++Index)
         {
+            if (Desc->ValueType == EPropertyBagPropertyType::Bool && !ValidateBoolean(Value->AsArray()[Index], OutError)) return false;
             if (!::ApplyJsonValueToProperty(Values.GetRawPtr(Index), Array->Inner, Value->AsArray()[Index], OutError)) return false;
         }
         return true;
     }
+    if (Desc->ValueType == EPropertyBagPropertyType::Bool && !ValidateBoolean(Value, OutError)) return false;
     return ::ApplyJsonValueToProperty(OutBag.GetMutableValue().GetMemory(), const_cast<FProperty*>(Desc->CachedProperty), Value, OutError);
 }
 
@@ -73,8 +98,10 @@ bool CommitPCGParameterValue(UPCGGraphInterface* Target, FName Name, const FInst
     else if (Desc->ValueType == EPropertyBagPropertyType::Enum)
     {
         const FEnumProperty* Enum = CastField<FEnumProperty>(Property);
-        if (Enum) Status = Target->SetGraphParameter(Name,
-            Enum->GetUnderlyingProperty()->GetUnsignedIntPropertyValue(Enum->ContainerPtrToValuePtr<void>(Container)), Enum->GetEnum());
+        const FNumericProperty* Numeric = Enum ? Enum->GetUnderlyingProperty() : CastField<FNumericProperty>(Property);
+        const UEnum* Definition = Cast<UEnum>(Desc->ValueTypeObject);
+        if (Numeric && Definition) Status = Target->SetGraphParameter(Name,
+            Numeric->GetUnsignedIntPropertyValue(Property->ContainerPtrToValuePtr<void>(Container)), Definition);
     }
     else if (const FBoolProperty* Bool = CastField<FBoolProperty>(Property)) Status = Target->SetGraphParameter(Name, Bool->GetPropertyValue_InContainer(Container));
     else if (const FByteProperty* Byte = CastField<FByteProperty>(Property)) Status = Target->SetGraphParameter(Name, Byte->GetPropertyValue_InContainer(Container));

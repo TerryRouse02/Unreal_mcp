@@ -1,4 +1,5 @@
 #include "Domains/PCG/Discovery/McpPCGRead.h"
+#include "Domains/PCG/Discovery/McpPCGBudget.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
 #include "Domains/PCG/Editing/McpPCGConnect.h"
 #include "EdGraph/EdGraph.h"
@@ -96,6 +97,8 @@ bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, 
     const int32 Offset = FMath::Max(0, GetJsonIntField(Payload, TEXT("offset"), 0));
     const int32 Limit = FMath::Clamp(GetJsonIntField(Payload, TEXT("limit"), 50), 1, 100);
     TArray<TSharedPtr<FJsonValue>> Items;
+    bool bPaged = false;
+    int32 ItemTotal = 0;
     if (SubAction == TEXT("list_pcg_node_types"))
     {
         const FString Filter = GetJsonStringField(Payload, TEXT("filter"));
@@ -123,10 +126,18 @@ bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, 
             Bridge->SendAutomationError(Socket, RequestId, TEXT("PCG settings class was not found."), TEXT("CLASS_NOT_FOUND"));
             return true;
         }
+        FPCGReadBudget Budget;
+        if (!Budget.CheckObject(Class->GetDefaultObject()))
+        {
+            Bridge->SendAutomationError(Socket, RequestId, TEXT("Settings defaults exceed the bounded authored read budget."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
+            return true;
+        }
         Result->SetStringField(TEXT("settingsClass"), Class->GetPathName());
+        bPaged = true;
         for (TFieldIterator<FProperty> It(Class); It; ++It)
         {
             if (!It->HasAnyPropertyFlags(CPF_Edit) || It->HasAnyPropertyFlags(CPF_Transient | CPF_Deprecated)) continue;
+            if (ItemTotal++ < Offset || Items.Num() >= Limit) continue;
             auto Item = MakeShared<FJsonObject>();
             Item->SetStringField(TEXT("name"), It->GetName());
             Item->SetStringField(TEXT("type"), McpPropertyReflection::GetPropertyTypeName(*It));
@@ -146,21 +157,31 @@ bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, 
             return true;
         }
         Result->SetStringField(TEXT("graphPath"), GraphPath);
-        Result->SetStringField(TEXT("revision"), GetPCGGraphRevision(Graph));
-        auto Snapshot = SubAction == TEXT("get_pcg_editor_graph") ? ReadPCGEditorGraphSnapshot(Graph) : ReadPCGGraph(Graph, GetJsonBoolField(Payload, TEXT("includeSettings"), false));
-        Items = Snapshot->GetArrayField(TEXT("nodes"));
+        const FString Revision = GetPCGGraphRevision(Graph);
+        if (Revision.IsEmpty())
+        {
+            Bridge->SendAutomationError(Socket, RequestId, TEXT("Complete authored PCG state exceeds the bounded read budget or has invalid dependencies."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
+            return true;
+        }
+        Result->SetStringField(TEXT("revision"), Revision);
+        const int32 EdgeOffset = FMath::Max(0, GetJsonIntField(Payload, TEXT("edgeOffset"), 0));
+        const int32 EdgeLimit = FMath::Clamp(GetJsonIntField(Payload, TEXT("edgeLimit"), 500), 1, 1000);
         const FString NodeId = GetJsonStringField(Payload, TEXT("nodeId"));
-        if (!NodeId.IsEmpty()) Items = Items.FilterByPredicate([&NodeId](const TSharedPtr<FJsonValue>& Item) {
+        bPaged = SubAction != TEXT("get_pcg_editor_graph");
+        auto Snapshot = bPaged ? ReadPCGGraph(Graph, GetJsonBoolField(Payload, TEXT("includeSettings"), false), Offset, Limit, EdgeOffset, EdgeLimit, NodeId)
+            : ReadPCGEditorGraphSnapshot(Graph);
+        Items = Snapshot->GetArrayField(TEXT("nodes"));
+        if (bPaged) ItemTotal = static_cast<int32>(Snapshot->GetNumberField(TEXT("nodeTotal")));
+        else if (!NodeId.IsEmpty()) Items = Items.FilterByPredicate([&NodeId](const TSharedPtr<FJsonValue>& Item) {
             FString Id;
             return Item->AsObject()->TryGetStringField(TEXT("nodeId"), Id) && Id == NodeId;
         });
         const auto& Edges = Snapshot->GetArrayField(TEXT("edges"));
-        const int32 EdgeOffset = FMath::Max(0, GetJsonIntField(Payload, TEXT("edgeOffset"), 0));
-        const int32 EdgeLimit = FMath::Clamp(GetJsonIntField(Payload, TEXT("edgeLimit"), 500), 1, 1000);
-        Result->SetArrayField(TEXT("edges"), Page(Edges, EdgeOffset, EdgeLimit));
-        Result->SetNumberField(TEXT("edgeTotal"), Edges.Num());
+        const int32 EdgeTotal = bPaged ? static_cast<int32>(Snapshot->GetNumberField(TEXT("edgeTotal"))) : Edges.Num();
+        Result->SetArrayField(TEXT("edges"), bPaged ? Edges : Page(Edges, EdgeOffset, EdgeLimit));
+        Result->SetNumberField(TEXT("edgeTotal"), EdgeTotal);
         Result->SetNumberField(TEXT("edgeOffset"), EdgeOffset);
-        Result->SetBoolField(TEXT("edgesTruncated"), EdgeOffset + EdgeLimit < Edges.Num());
+        Result->SetBoolField(TEXT("edgesTruncated"), EdgeOffset + EdgeLimit < EdgeTotal);
         if (SubAction == TEXT("get_pcg_editor_graph") || SubAction == TEXT("validate_pcg_graph"))
         {
             auto Check = CheckPCGEditorGraph(Graph);
@@ -180,11 +201,12 @@ bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, 
             Result->SetStringField(TEXT("validationScope"), TEXT("native_pin_compatibility"));
         }
     }
-    Result->SetArrayField(TEXT("items"), Page(Items, Offset, Limit));
-    Result->SetNumberField(TEXT("total"), Items.Num());
+    if (!bPaged) ItemTotal = Items.Num();
+    Result->SetArrayField(TEXT("items"), bPaged ? Items : Page(Items, Offset, Limit));
+    Result->SetNumberField(TEXT("total"), ItemTotal);
     Result->SetNumberField(TEXT("offset"), Offset);
     Result->SetNumberField(TEXT("limit"), Limit);
-    Result->SetBoolField(TEXT("truncated"), Offset + Limit < Items.Num());
+    Result->SetBoolField(TEXT("truncated"), Offset + Limit < ItemTotal);
     Bridge->SendAutomationResponse(Socket, RequestId, true, TEXT("PCG state read."), Result);
     return true;
 }

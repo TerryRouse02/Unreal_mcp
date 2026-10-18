@@ -65,21 +65,26 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
     {
         const bool bEmitRow = ResourceIndex >= Offset && ResourceIndex - Offset < Limit;
         ++ResourceIndex;
+        UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(Value);
+        const bool bHism = Ism && Ism->IsA<UHierarchicalInstancedStaticMeshComponent>();
+        const int32 Count = Ism ? Ism->GetInstanceCount() : 0;
+        if (Ism)
+        {
+            bHism ? ++HismCount : ++IsmCount;
+            Instances += Count;
+        }
+        if (!bEmitRow) continue;
         auto Row = MakeShared<FJsonObject>();
         Row->SetStringField(TEXT("componentPath"), Value->GetPathName());
         Row->SetStringField(TEXT("class"), Value->GetClass()->GetPathName());
-        if (UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(Value))
+        if (Ism)
         {
-            const bool bHism = Ism->IsA<UHierarchicalInstancedStaticMeshComponent>();
-            bHism ? ++HismCount : ++IsmCount;
-            const int32 Count = Ism->GetInstanceCount();
-            Instances += Count;
             Row->SetNumberField(TEXT("instanceCount"), Count);
             Row->SetStringField(TEXT("kind"), bHism ? TEXT("HISM") : TEXT("ISM"));
             if (UStaticMesh* Mesh = Ism->GetStaticMesh()) Row->SetStringField(TEXT("meshPath"), Mesh->GetPathName());
             TArray<TSharedPtr<FJsonValue>> Samples;
             const int32 SamplesToRead = FMath::Min(SampleLimit, Count);
-            for (int32 Sample = 0; bEmitRow && Sample < SamplesToRead; ++Sample)
+            for (int32 Sample = 0; Sample < SamplesToRead; ++Sample)
             {
                 const int32 Index = SamplesToRead > 1 && Sample + 1 == SamplesToRead ? Count - 1 : Sample;
                 FTransform Transform;
@@ -90,7 +95,7 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
             }
             Row->SetArrayField(TEXT("sampleTransforms"), Samples);
         }
-        if (bEmitRow) Rows.Add(MakeShared<FJsonValueObject>(Row));
+        Rows.Add(MakeShared<FJsonValueObject>(Row));
     }
     TArray<TSharedPtr<FJsonValue>> Page = MoveTemp(Rows);
     TArray<TSharedPtr<FJsonValue>> ActorRows, OutputRows;
@@ -101,6 +106,7 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
         auto Row = MakeShared<FJsonObject>();
         Row->SetStringField(TEXT("actorPath"), SortedActors[Index]->GetPathName());
         Row->SetBoolField(TEXT("rootManagedActor"), RootActors.Contains(SortedActors[Index]));
+        Row->SetObjectField(TEXT("transform"), McpHandlerUtils::TransformToJson(SortedActors[Index]->GetActorTransform()));
         ActorRows.Add(MakeShared<FJsonValueObject>(Row));
     }
     int64 OutputPoints = 0;

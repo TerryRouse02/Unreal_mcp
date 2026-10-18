@@ -21845,6 +21845,10 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "boolean",
           "description": "Multiple owned editor graph candidates prevent a safe read."
         },
+        "atomic": {
+          "type": "boolean",
+          "description": "False: cross-package disk writes are not an atomic transaction."
+        },
         "available": {
           "type": "boolean",
           "description": "An editor graph already exists; a read never opens one."
@@ -22141,6 +22145,22 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           },
           "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags."
         },
+        "parentCommitted": {
+          "type": "boolean",
+          "description": "Parent attachment remains committed in memory."
+        },
+        "parentGraphPath": {
+          "type": "string",
+          "description": "Resolved parent graph when attaching a node."
+        },
+        "parentSaved": {
+          "type": "boolean",
+          "description": "Parent package save was confirmed."
+        },
+        "partialSave": {
+          "type": "boolean",
+          "description": "A package was saved while another requested package write did not complete; inspect the per-package fields."
+        },
         "phase": {
           "type": "string",
           "description": "Failure phase: preflight or commit."
@@ -22163,7 +22183,7 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         },
         "residualChanges": {
           "type": "boolean",
-          "description": "Failure recovery could not verify complete restoration."
+          "description": "A failed request left an owned in-memory asset to inspect or explicitly remove."
         },
         "resourceSnapshotFromSuccessfulOperation": {
           "type": "boolean",
@@ -22217,6 +22237,14 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         "state": {
           "type": "string",
           "description": "running, succeeded, failed, cancelled, timed_out, target_gone, target_moved, graph_changed, superseded, unknown, save_failed or observation_cancelled."
+        },
+        "subgraphPath": {
+          "type": "string",
+          "description": "Resolved reusable child graph path."
+        },
+        "subgraphSaved": {
+          "type": "boolean",
+          "description": "Child package save completed before parent attachment/save."
         },
         "succeeded": {
           "type": "boolean",

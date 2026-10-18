@@ -45,6 +45,30 @@ save behavior. They accept an optional `expectedGraphRevision`; stale state is
 refused before mutation. A revision reflects authored graph content, including
 settings and parameters, rather than an MCP-only edit counter. It is a
 process-local optimistic concurrency token, not a durable ID or credential.
+Referenced subgraph content participates in the parent revision. Transient runtime
+children (including descendants of a transient cache) do not, while authored
+selectors and their editable state do. Detached nodes/pins and disconnected edges
+retained after native edits or Undo are not active authored model members. The
+editor-only parameter presentation hierarchy is also excluded: opening its details
+panel may lazily create presentation objects without editing native parameter
+schema or values, which remain fingerprinted separately.
+Reinstancing a settings Blueprint class
+invalidates the token even if the class asset path stays the same. Never compare
+revision strings across editor processes as proof of persistence.
+
+Complete authored capture has a shared budget across referenced graphs: 65,536
+reflected values, 8,192 objects, 4,096 ordinary nodes, 16,384 outgoing edges and
+1,048,576 string/text characters; nesting and dependency depth are limited to 32,
+and dependencies to 256 graphs. A cooperative 100 ms capture deadline is checked
+throughout the walk and after serialization. It cannot interrupt one native
+serializer call and is not a hard real-time bound. Exhaustion or an invalid/cyclic
+dependency produces no partial revision. Query/observation receipts report
+`PCG_SNAPSHOT_UNAVAILABLE`; mutating actions also require a complete capture even
+when no expected revision was supplied. Reduce the authored state before retrying.
+Pagination limits node/settings, parameter-value and managed-result row exports.
+Revision integrity still requires a bounded complete capture; inventory totals
+scan all related managed references. Inventory traversal itself is not made
+constant-time or given a hard resource-count cap by page selection.
 
 Settings are prevalidated on staged data. Nested paths may traverse settings'
 owned objects, not shared assets or class defaults. Invalid mixed settings and
@@ -74,14 +98,29 @@ arbitrary custom Blueprint callbacks; unsupported isolation must be refused.
 - `saved`: the selected package was saved; this does not mean every dirty package
   or dependent instance was saved.
 - `rolledBack`: explicit failure recovery restored the captured state.
-- `residualChanges`: recovery could not establish restoration; inspect before
-  continuing, and do not assume a failure means nothing changed.
+- `residualChanges`: a failed operation left changes or could not establish
+  restoration, including a created child asset; inspect before continuing and do
+  not assume a failure means nothing changed.
 - `revision` and `editorGraph`: the observed resulting graph and UI consistency.
 - `undo`: editor transaction availability, separate from explicit failure
   recovery and disk persistence.
 
 A save failure may leave `committed: true, saved: false`. Disk writes are not
 atomically rolled back. An editor transaction is not automatic failure recovery.
+PCG mutations refuse an already-active caller editor transaction with `EDITOR_BUSY`;
+read-only discovery remains available. Explicit authored-state recovery does not
+use global Undo.
+
+`create_pcg_subgraph` is a composite operation, not a multi-package transaction.
+For a new child it creates/saves the child first, then attaches it to the parent
+and optionally saves the parent. Read `subgraphSaved`, `parentCommitted`,
+`parentSaved`, `partialSave`, `rolledBack`, `residualChanges` and `atomic: false`.
+An attachment failure can restore captured parent authored state but does not
+delete a created child or roll back saved bytes. A parent-save failure can leave
+an attached in-memory parent and a saved child. Inspect both assets, resolve the
+save cause, then explicitly save the intended owners or remove only proven-unused
+residual assets. Retrying creation blindly can encounter the existing child or
+attach it twice; the receipt is not an idempotency guarantee.
 
 `sync_pcg_editor_graph` repairs an existing representation through native public
 schema actions. Only `openEditor: true` allows it to open the graph when needed.
@@ -109,7 +148,9 @@ Object, Class, SoftObject and SoftClass, as scalars or a single array container.
 Struct support is Vector, Rotator and Transform. Enum/struct/reference types use
 `typeObject`. Array writes are limited to 10,000 elements and validated element
 by element. Floating-point inputs must be finite and fit their native type;
-malformed numeric strings are refused rather than becoming zero. Unsupported
+malformed numeric strings are refused rather than becoming zero. Bool values accept
+JSON booleans, numeric 0/1, or case-insensitive `true`/`false` strings; other values
+are rejected, including invalid elements in a Bool array. Unsupported
 existing bag types are explicitly refused instead of silently coerced.
 
 Setting an instance parameter establishes an override. Reset clears that one
@@ -142,7 +183,7 @@ success; unavailable diagnostics yield `unknown`. Zero output can be valid.
 `completed` means the observation ended. Inspect `state`, `succeeded`,
 `operationErrorCode`, `engineStillRunning` and native delegate flags. Outcomes
 include `succeeded`, `failed`, `cancelled`, `timed_out`, `graph_changed`,
-`superseded`, `target_gone`, `target_moved`, `unknown`, `save_failed` and
+`superseded`, `target_gone`, `target_moved`, `input_unavailable`, `unknown`, `save_failed` and
 `observation_cancelled`.
 
 A timeout or MCP request cancellation does not silently cancel native work.
@@ -235,3 +276,83 @@ its uniquely owned graph-instance fixture. Identity is checked before fixtures
 are mutated. These suites use unique run roots, disable shared-fixture cleanup
 and do not repeat mutating folded twins implicitly. Never point the legacy PCG
 suite's fixed-folder cleanup at a production editor.
+
+### Reproducible complex and failure fixtures
+
+Create a new isolated native `PCGValidation` project with the plugin and
+source-only test elements:
+
+```sh
+node scripts/pcg-validation-project.mjs --engine "<UE_ROOT>" --project "<NEW_PROJECT_DIR>" --fixtures
+```
+
+The generator copies only source inputs into the new project. It refuses an existing target directory.
+Build that project's Editor target with the selected engine; no engine source or
+installed plugin is modified. Optional `--ws-ports` and `--native-port` keep test
+listeners separate, loopback-only and authenticated.
+
+The additional suites are:
+
+- `manage-pcg-lifecycle`: a deferred custom element creates a transient child
+  while native generation is active; control/cache runs must keep the authored
+  revision, and observation timeout must retain the lease until native idle.
+- `manage-pcg-workflow`: a linear spline sampled every 100 units, inclusive
+  `MCPDistance` filtering from 200 to 500, a seeded random-transform subgraph, a
+  custom Blueprint element and three mesh/one actor spawner branches. Expected
+  products are twelve instances across two ISMs and one HISM, four managed root
+  actors and `MCP_CustomNode` **output-data** tags. All twelve instance transforms,
+  random ranges and fixed-seed regeneration are checked with explicit tolerances.
+- `manage-pcg-save-failure` (Windows): exclusively locks only its uniquely owned
+  graph package, checks real save refusal and unchanged disk bytes, checks a
+  saved-child/unsaved-parent receipt, releases the lock, and tests caller-transaction
+  refusal. It does not fill a disk or alter global permissions.
+- `manage-pcg-cold-load`: reads a manifest from the selected project's
+  `Saved/PCGValidation`, loads the owned map in a fresh editor process, checks
+  node IDs, settings, subgraph/mesh references, parameter GUID/default/override,
+  and regenerates the complex products. Set `UNREAL_MCP_PCG_KEEP_FIXTURE=1` for the
+  workflow run to save the map/assets and write its manifest, then normally exit
+  the idle editor, start a new process and set
+  `UNREAL_MCP_PCG_PERSISTENCE_MANIFEST` to that JSON file. Persistence evidence is
+  intentionally retained rather than deleted by the cold-load suite.
+- `manage-pcg-compatibility`: requires `UNREAL_MCP_PCG_VARIANT=disabled|noeditor`.
+  The generator's `--pcg-disabled` builds the no-PCG branch.
+  `--pcg-editor-disabled` forces the editor-API conditional **only in the copied
+  test Build.cs**; it proves that conditional branch, not a real installation
+  with the engine module absent.
+
+The source test element forwards points and adds a data tag; it is not proof
+that arbitrary Blueprint scripts have no external side effects. Tests poll only
+explicit read actions. An observer finishing, timing out or cancelling is not
+permission to delete fixtures: require native `generating: false` and
+`cleaning: false` first, and preserve the scene if that cannot be established.
+Native automation runners must inspect the exported JSON test results; editor
+process exit status alone may not reflect failed assertions.
+
+For native HTTP/SSE, point `UNREAL_MCP_SERVER_ARGS` at the built CLI followed by
+`,proxy` and set `UNREAL_MCP_URL` to the selected editor's loopback `/mcp` endpoint.
+Dense suites should set `UNREAL_MCP_TEST_THROTTLE_MS=1000`; bounded PCG read polling
+uses a one-second interval. Respect the native session request/tool-call quotas
+instead of disabling them for a green run. Native error receipts and the WS
+forwarder's nested error receipts have different capture paths; tests explicitly
+handle both without treating a timeout or missing capture as success.
+
+`tests/pcg-authorization.mjs` accepts a private
+`UNREAL_MCP_PCG_AUTH_MANIFEST` under the selected project's `Saved/PCGValidation`.
+It expects uniquely owned map/graph/component/node locators and six distinct
+non-Admin profile tokens (`read`, `write`, `destructive`, `owner`, `other`,
+`wrongProject`). Only the test owner should provision these confined profiles;
+never put that manifest or tokens in source control. The driver checks project
+identity with the normal project token before mutations, then verifies exact
+scopes, path/project refusals, envelope consent, principal-bound status and
+cross-transport cancellation. Cancelling a WS request must retain the native busy
+lease and preserve its observation-cancelled outcome after late native completion.
+The driver never deletes fixtures or edits profiles. Restore the original config
+and revoke temporary credentials after the owning editor exits normally.
+
+`UNREAL_MCP_PCG_VERIFY_EDITOR=1` adds public-subsystem open/close/reopen and
+follow-up edit checks to the cold-load suite, restoring its authored position and
+Seed afterwards without saving those temporary edits. These are API-backed editor
+lifecycle/mapping checks, not a claim of manual visual inspection or GPU rendering.
+The native managed-result stress fixture uses unregistered test components and
+real instance storage; it measures full-inventory counting with bounded on-page
+transform exports, not performance of a production scene or its renderer.
