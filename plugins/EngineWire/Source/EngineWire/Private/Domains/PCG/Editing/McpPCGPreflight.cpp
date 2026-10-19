@@ -3,8 +3,25 @@
 #include "MCP/Gateway/McpNativeGatewayCanonicalJson.h"
 
 #if MCP_HAS_PCG
+#include "PCGInputOutputSettings.h"
+
 namespace McpPCGHandlers
 {
+bool HasOwnedPCGNodeSettings(UPCGGraph* Graph, UPCGNode* Node)
+{
+    if (!Graph || !Node || Node->GetOuter() != Graph) return false;
+    const bool bBoundary = Node == Graph->GetInputNode() || Node == Graph->GetOutputNode();
+    if (!bBoundary && !Graph->GetNodes().Contains(Node)) return false;
+    UPCGSettings* Settings = Node->GetSettings();
+    if (!Settings || Settings->HasAnyFlags(RF_ClassDefaultObject)) return false;
+    if (!bBoundary) return Settings->GetOuter() == Node;
+    const auto* BoundarySettings = Cast<UPCGGraphInputOutputSettings>(Settings);
+    UPCGNode* OtherBoundary = Node == Graph->GetInputNode() ? Graph->GetOutputNode() : Graph->GetInputNode();
+    return BoundarySettings && BoundarySettings->IsInput() == (Node == Graph->GetInputNode()) &&
+        (Settings->GetOuter() == Node || Settings->GetOuter() == Graph) &&
+        (!OtherBoundary || OtherBoundary->GetSettings() != Settings);
+}
+
 bool ValidatePCGNodeSettings(UPCGGraph* Graph, UPCGNode* Node, const FString& SubAction,
     const TSharedPtr<FJsonObject>& Payload, FString& OutError)
 {

@@ -127,6 +127,49 @@ schema actions. Only `openEditor: true` allows it to open the graph when needed.
 It preserves existing model identities and comments/layout rather than replacing
 the graph with a new asset.
 
+The native input/output boundary node IDs returned by graph reads can be reused
+for settings writes as well as the `input`/`output` aliases. Their native
+`UPCGGraphInputOutputSettings` are owned by the same graph rather than by the node;
+this specific ownership is accepted without permitting edits to another graph
+or shared settings. Configure point-only subgraph boundaries through
+`set_pcg_node_settings` with `settings.Pins`, then connect the named pins through
+the normal PCG edit actions. Preflight still refuses pin changes that would
+silently remove existing edges, and boundary node removal remains protected.
+
+For UE 5.7+, a point-only input boundary can be authored as follows. Replace the
+node ID with the actual input ID returned by the graph read, and use its current
+revision. Configure the output boundary similarly with label `Out`; do this
+before connecting edges that depend on those labels.
+
+```json
+{
+  "operation": "execute",
+  "tool": "manage_pcg",
+  "action": "set_pcg_node_settings",
+  "params": {
+    "graphPath": "/Game/PCG/PointTransform",
+    "nodeId": "DefaultInputNode",
+    "expectedGraphRevision": "<revision from get_pcg_graph>",
+    "settings": {
+      "Pins": [
+        {
+          "Label": "In",
+          "AllowedTypes": {
+            "Ids": [
+              {
+                "Struct": "/Script/PCG.PCGDataTypeInfoPoint"
+              }
+            ],
+            "CustomSubtype": -1
+          }
+        }
+      ]
+    },
+    "save": false
+  }
+}
+```
+
 ## Graph parameters and instance overrides
 
 `get_pcg_parameters` returns native schema, stable parameter IDs, graph defaults,
@@ -146,8 +189,13 @@ Use `add_pcg_parameter`, `set_pcg_parameter`, `rename_pcg_parameter`,
 kinds are Bool, Byte, Int32, Int64, Float, Double, Name, String, Enum, Struct,
 Object, Class, SoftObject and SoftClass, as scalars or a single array container.
 Struct support is Vector, Rotator and Transform. Enum/struct/reference types use
-`typeObject`. Array writes are limited to 10,000 elements and validated element
-by element. Floating-point inputs must be finite and fit their native type;
+`typeObject`. Int64 values outside the JSON safe-integer range
+(`-9007199254740991` through `9007199254740991`) must be supplied as decimal
+strings; native Int64 defaults/effective values outside that range are returned
+as exact decimal strings, including individual array elements. Values within
+that range remain JSON numbers. For example, `"9223372036854775807"` round-trips
+without double-precision rounding. Array writes are limited to 10,000 elements
+and validated element by element. Floating-point inputs must be finite and fit their native type;
 malformed numeric strings are refused rather than becoming zero. Bool values accept
 JSON booleans, numeric 0/1, or case-insensitive `true`/`false` strings; other values
 are rejected, including invalid elements in a Bool array. Unsupported
@@ -186,12 +234,25 @@ include `succeeded`, `failed`, `cancelled`, `timed_out`, `graph_changed`,
 `superseded`, `target_gone`, `target_moved`, `input_unavailable`, `unknown`, `save_failed` and
 `observation_cancelled`.
 
+`superseded` requires observing another native generation start while the original
+operation is still watched. An editor refresh can instead cancel the old native
+task before scheduling its replacement; that original operation may correctly
+remain `cancelled`. A later generation is not retroactively attributed to it.
+
 A timeout or MCP request cancellation does not silently cancel native work.
 The native lease remains until that work is idle; another operation on the same
 component is refused as busy. `cancel_pcg_operation` explicitly requests native
 generation cancellation; it is not rollback. Native cleanup cancellation is not
 exposed. `cleanup_pcg_component` cleans only the selected component's managed
 resources and waits for native cleanup. Nonmanaged world objects are not deleted.
+
+A retained operation describes its original observation, not every future task on
+the component. For example, renaming an actor can cancel the observed task and
+then trigger a separate editor refresh. Before cleanup or fixture deletion, read
+the current inventory at the component's current exact path and require native
+`generating: false` and `cleaning: false`; an old terminal operation alone is not
+a current-idle proof. If cleanup is refused as busy, it has not emptied the
+resources, so a subsequent zero-resource assertion cannot stand in for cleanup.
 
 The PCG operation store is current-process only, bounded to 64 active leases and
 128 completed operations with a 30-minute completed TTL. Active native work is
@@ -291,11 +352,26 @@ Build that project's Editor target with the selected engine; no engine source or
 installed plugin is modified. Optional `--ws-ports` and `--native-port` keep test
 listeners separate, loopback-only and authenticated.
 
+The optional deferred-context and Blueprint fixtures require UE 5.7 or later.
+Run graph-editor lifecycle automation in a normal windowed editor: UE 5.7.4
+can fail in native Slate window restoration when closing a PCG tab under
+`-NullRHI`. That incomplete run is not a passing test or a reason to skip the
+editor assertions. If the installed Zen cache is unavailable,
+`-ddc=InstalledNoZenLocalFallback` with a process-local `UE-LocalDataCachePath`
+pointing inside the isolated project avoids changing engine/global cache settings.
+Always inspect the exported automation report; the editor process exit code alone
+does not establish that every assertion passed.
+
 The additional suites are:
 
 - `manage-pcg-lifecycle`: a deferred custom element creates a transient child
   while native generation is active; control/cache runs must keep the authored
   revision, and observation timeout must retain the lease until native idle.
+  A fixture-only helper cancels and schedules a distinct real native task in one
+  game-thread turn to test supersession deterministically. It is confined to the
+  isolated project's lifecycle actors, uses public native APIs rather than
+  broadcasting fake delegates, and verifies the replacement task ID, unchanged
+  authored revision, all 100 products and eventual native idle.
 - `manage-pcg-workflow`: a linear spline sampled every 100 units, inclusive
   `MCPDistance` filtering from 200 to 500, a seeded random-transform subgraph, a
   custom Blueprint element and three mesh/one actor spawner branches. Expected

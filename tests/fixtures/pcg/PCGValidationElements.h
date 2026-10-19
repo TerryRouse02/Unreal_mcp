@@ -4,6 +4,8 @@
 #include "Elements/Blueprint/PCGBlueprintBaseElement.h"
 #include "PCGValidationElements.generated.h"
 
+class UPCGComponent;
+
 UCLASS()
 class PCGVALIDATION_API UPCGValidationDelaySettings : public UPCGSettings
 {
@@ -14,6 +16,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Validation")
     bool bCreateTransientChild = true;
+
+    UFUNCTION(BlueprintCallable, Category = "Validation")
+    static int64 ReplaceInFlightGeneration(UPCGComponent* Component);
 
 protected:
     virtual TArray<FPCGPinProperties> InputPinProperties() const override;

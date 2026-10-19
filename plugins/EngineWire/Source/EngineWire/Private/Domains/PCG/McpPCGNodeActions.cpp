@@ -114,7 +114,7 @@ bool HandleSetPCGNodeSettings(UEngineWireSubsystem* Bridge, const FString& Reque
         return true;
     }
     UPCGSettings* Settings = Node->GetSettings();
-    if (!Settings || Settings->GetOuter() != Node)
+    if (!HasOwnedPCGNodeSettings(Graph, Node))
     {
         Bridge->SendAutomationError(Socket, RequestId, TEXT("PCG node has no privately owned editable settings."), TEXT("SETTINGS_NOT_FOUND"));
         return true;

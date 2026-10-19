@@ -33,6 +33,7 @@ private:
     TArray<FRecord> Records;
 };
 
+bool HasOwnedPCGNodeSettings(UPCGGraph* Graph, UPCGNode* Node);
 UPCGSettings* PreparePCGSettings(UPCGSettings* Source, const FString& SubAction,
     const TSharedPtr<FJsonObject>& Payload, FString& OutError);
 bool ValidatePCGNodeSettings(UPCGGraph* Graph, UPCGNode* Node, const FString& SubAction,

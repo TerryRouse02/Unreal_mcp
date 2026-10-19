@@ -21776,7 +21776,7 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "description": "Enum, struct or class path. Struct supports Vector, Rotator and Transform."
         },
         "value": {
-          "description": "Optional initial default value, validated on a copied property bag before adding the parameter."
+          "description": "Optional initial default value, validated on a copied property bag before adding the parameter. Supply Int64 values outside the JSON safe-integer range as decimal strings."
         },
         "view": {
           "type": "string",
@@ -22143,7 +22143,7 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
             "type": "object",
             "x-unreal-reflection-boundary": true
           },
-          "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags."
+          "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags. Int64 values outside the JSON safe-integer range are exact decimal strings, including array elements."
         },
         "parentCommitted": {
           "type": "boolean",

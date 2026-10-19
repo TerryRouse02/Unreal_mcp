@@ -52,7 +52,14 @@ function validateManifest(value) {
     ...(value.parameterIds === undefined ? {} : { parameterIds: value.parameterIds }),
     ...(value.componentOverride === undefined ? {} : { componentOverride: value.componentOverride }),
     ...(value.sampleY === undefined ? {} : { sampleY: value.sampleY }),
+    ...(value.exactIntegerDefault === undefined ? {} : { exactIntegerDefault: value.exactIntegerDefault,
+      exactIntegerOverride: value.exactIntegerOverride, exactIntegerArray: value.exactIntegerArray }),
   };
+  if (manifest.exactIntegerDefault !== undefined &&
+      (manifest.exactIntegerDefault !== '9223372036854775807' || manifest.exactIntegerOverride !== '-9223372036854775808' ||
+       JSON.stringify(manifest.exactIntegerArray) !== JSON.stringify(['9007199254740993', '-9223372036854775808', 7]))) {
+    throw new Error('PCG cold-load manifest has invalid exact Int64 expectations.');
+  }
   for (const field of ['mapPath', 'graphPath', 'subgraphPath', 'blueprintPath', 'componentPath']) {
     if (!manifest[field].startsWith(`${manifest.root}/`)) throw new Error('All persistence paths must belong to the same owned RunRoot.');
   }
@@ -290,6 +297,30 @@ for node_name, mesh_path, component_class in ${JSON.stringify([
       { path: 'structuredContent.result.parameters.0.overridden', equals: true },
     ],
   }]),
+  ...(manifest.exactIntegerDefault === undefined ? [] : [
+    { scenario: 'Read the exact persisted full-range Int64 graph default', toolName: 'manage_pcg',
+      arguments: { action: 'get_pcg_parameters', graphPath: manifest.graphPath, name: 'ExactInteger', limit: 1 },
+      expected: 'success', abortOnFailure: true, assertions: [
+        { path: 'structuredContent.result.parameters.0.value', equals: manifest.exactIntegerDefault },
+        { path: 'structuredContent.result.parameters.0.defaultValue', equals: manifest.exactIntegerDefault },
+      ] },
+    { scenario: 'Read the exact persisted full-range Int64 component override', toolName: 'manage_pcg',
+      arguments: { action: 'get_pcg_parameters', target: 'component', componentPath: manifest.componentPath, name: 'ExactInteger', limit: 1 },
+      expected: 'success', abortOnFailure: true, assertions: [
+        { path: 'structuredContent.result.parameters.0.value', equals: manifest.exactIntegerOverride },
+        { path: 'structuredContent.result.parameters.0.defaultValue', equals: manifest.exactIntegerDefault },
+        { path: 'structuredContent.result.parameters.0.overridden', equals: true },
+      ] },
+    { scenario: 'Read every exact persisted Int64 array element', toolName: 'manage_pcg',
+      arguments: { action: 'get_pcg_parameters', graphPath: manifest.graphPath, name: 'ExactIntegerArray', limit: 1 },
+      expected: 'success', abortOnFailure: true, assertions: [
+        { path: 'structuredContent.result.parameters.0.value', length: manifest.exactIntegerArray.length },
+        ...manifest.exactIntegerArray.flatMap((value, index) => [
+          { path: 'structuredContent.result.parameters.0.value.' + index, equals: value },
+          { path: 'structuredContent.result.parameters.0.defaultValue.' + index, equals: value },
+        ]),
+      ] },
+  ]),
   { scenario: 'Regenerate only the exact persisted component and require native success', toolName: 'manage_pcg',
     arguments: { action: 'generate_pcg_graph', componentPath: manifest.componentPath, timeoutSeconds: 30, save: false },
     expected: 'success', timeoutMs: 30000, abortOnFailure: true,

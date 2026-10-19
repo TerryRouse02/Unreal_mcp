@@ -16516,7 +16516,7 @@
             "description": "Enum, struct or class path. Struct supports Vector, Rotator and Transform."
           },
           "value": {
-            "description": "Optional initial default value, validated on a copied property bag before adding the parameter."
+            "description": "Optional initial default value, validated on a copied property bag before adding the parameter. Supply Int64 values outside the JSON safe-integer range as decimal strings."
           },
           "view": {
             "type": "string",

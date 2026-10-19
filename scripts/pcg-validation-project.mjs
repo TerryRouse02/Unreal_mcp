@@ -23,8 +23,8 @@ const project = path.resolve(values.project);
 const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../plugins/EngineWire');
 const version = JSON.parse(await readFile(path.join(engine, 'Engine/Build/Build.version'), 'utf8'));
 await stat(path.join(engine, 'Engine/Binaries/Win64/UnrealEditor.exe'));
-if (values.fixtures && (version.MajorVersion !== 5 || version.MinorVersion < 8)) {
-  throw new Error('The optional context-handle/Blueprint fixtures currently require UE 5.8 or later.');
+if (values.fixtures && (version.MajorVersion !== 5 || version.MinorVersion < 7)) {
+  throw new Error('The optional context-handle/Blueprint fixtures currently require UE 5.7 or later.');
 }
 try {
   await stat(project);

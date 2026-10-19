@@ -1,5 +1,5 @@
 {
-  "catalogRevision": "249371ab1de7f72c",
+  "catalogRevision": "8ba95b9bddcdc693",
   "recordCount": 423,
   "records": [
     {
@@ -82365,7 +82365,7 @@
               "description": "Scalar or one array container, default none."
             },
             "value": {
-              "description": "Optional initial default value, validated on a copied property bag before adding the parameter."
+              "description": "Optional initial default value, validated on a copied property bag before adding the parameter. Supply Int64 values outside the JSON safe-integer range as decimal strings."
             },
             "newName": {
               "type": "string",
@@ -82428,7 +82428,7 @@
                 "type": "object",
                 "x-unreal-reflection-boundary": true
               },
-              "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags."
+              "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags. Int64 values outside the JSON safe-integer range are exact decimal strings, including array elements."
             },
             "revision": {
               "type": "string",
@@ -82572,8 +82572,8 @@
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "c334f2896470d7cc63928e13608173845751b747032760cf81b43791ba060cca",
-        "content": "081653f97f410c8a79ce78bdcabf91e2412177b4e6d3e94e4053399851bd1123"
+        "schema": "820fa044a7a6b9052ecae88ae0ae4d02670b241a7e722f155b6a98f0281d323a",
+        "content": "74d34d12abf90192a4eabf538c6b6fa70231dd55a486152684e276868730c381"
       }
     },
     {
@@ -83428,7 +83428,7 @@
                 "type": "object",
                 "x-unreal-reflection-boundary": true
               },
-              "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags."
+              "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags. Int64 values outside the JSON safe-integer range are exact decimal strings, including array elements."
             },
             "committed": {
               "type": "boolean",
@@ -83781,8 +83781,8 @@
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "1bce8d4688953b450111a907c4f69fb7eb85ef80869868a221f8ba9d5d0f58cd",
-        "content": "4ad602d457fcc790b6e6b01837c083db7b3e246a14d6390b3294f9fa245f93b7"
+        "schema": "4804aebe4055419fbab9a4c8f5f18bbc1c643ee2ad0ac6b0ba50339ead47f331",
+        "content": "9e10ada138070cdef0f30398f3bec98722166f984afc75b571f985aa439fe82a"
       }
     },
     {
@@ -84181,7 +84181,7 @@
                 "type": "object",
                 "x-unreal-reflection-boundary": true
               },
-              "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags."
+              "description": "Parameter names, stable IDs, native types, container, default/effective values and override flags. Int64 values outside the JSON safe-integer range are exact decimal strings, including array elements."
             },
             "revision": {
               "type": "string",
@@ -84295,8 +84295,8 @@
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "80084aab3fcacdb6678cbaa54a48f21f3d22e66ea245a7febb071e99672891ca",
-        "content": "48571eedc5be486bfd7c67a7c9f1a14bd2ed7affd3c6fd90ced5e118ba2f347f"
+        "schema": "0594375cc4c59dba7f2e66d79fe4d401f4a8781f236d0a53f15b01fff05c09c8",
+        "content": "193ef5d1e733700d6ee6dae39da1e35e7354cc7c271a013a8038f65f7f20e41a"
       }
     },
     {

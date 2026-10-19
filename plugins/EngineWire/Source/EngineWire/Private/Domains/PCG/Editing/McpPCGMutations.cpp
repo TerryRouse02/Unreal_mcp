@@ -138,7 +138,7 @@ bool ApplyPCGMutation(UPCGGraph* Graph, const TSharedPtr<FJsonObject>& Operation
     }
     if (Op == TEXT("set_settings"))
     {
-        if (!Node->GetSettings() || Node->GetSettings()->GetOuter() != Node || !ValidatePCGNodeSettings(Graph, Node, TEXT("set_pcg_node_settings"), Operation, OutError)) return false;
+        if (!HasOwnedPCGNodeSettings(Graph, Node) || !ValidatePCGNodeSettings(Graph, Node, TEXT("set_pcg_node_settings"), Operation, OutError)) return false;
         int32 Count = 0;
         if (!ApplyPCGSettingsPayload(Node->GetSettings(), TEXT("set_pcg_node_settings"), Operation, OutError, Count)) return false;
         ApplyNodeMetadata(Node, Operation);

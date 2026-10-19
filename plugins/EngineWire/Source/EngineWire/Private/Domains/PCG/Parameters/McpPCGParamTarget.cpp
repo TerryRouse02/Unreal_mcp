@@ -5,6 +5,32 @@
 #if MCP_HAS_PCG_PARAMETERS
 namespace McpPCGHandlers
 {
+namespace
+{
+TSharedPtr<FJsonValue> ExportPCGParameterValue(const void* Container, const FProperty* Property)
+{
+    if (const FInt64Property* Integer = CastField<FInt64Property>(Property))
+    {
+        constexpr int64 MaxSafeInteger = 9007199254740991LL;
+        const int64 Value = Integer->GetPropertyValue_InContainer(Container);
+        if (Value < -MaxSafeInteger || Value > MaxSafeInteger)
+            return MakeShared<FJsonValueString>(LexToString(Value));
+        return MakeShared<FJsonValueNumber>(static_cast<double>(Value));
+    }
+    const FArrayProperty* Array = CastField<FArrayProperty>(Property);
+    if (Array && CastField<FInt64Property>(Array->Inner))
+    {
+        FScriptArrayHelper Values(Array, Array->ContainerPtrToValuePtr<void>(Container));
+        TArray<TSharedPtr<FJsonValue>> Result;
+        Result.Reserve(Values.Num());
+        for (int32 Index = 0; Index < Values.Num(); ++Index)
+            Result.Add(ExportPCGParameterValue(Values.GetRawPtr(Index), Array->Inner));
+        return MakeShared<FJsonValueArray>(Result);
+    }
+    return McpPropertyReflection::ExportPropertyToJsonValueOrText(const_cast<void*>(Container), const_cast<FProperty*>(Property));
+}
+}
+
 bool ResolvePCGParameterTarget(const TSharedPtr<FJsonObject>& Payload, FPCGParameterTarget& Target, FString& OutError)
 {
     Target.Scope = GetJsonStringField(Payload, TEXT("target"), TEXT("graph"));
@@ -82,13 +108,13 @@ TArray<TSharedPtr<FJsonValue>> ReadPCGParameters(const FPCGParameterTarget& Targ
         if (Desc.ValueTypeObject) Row->SetStringField(TEXT("typeObject"), Desc.ValueTypeObject->GetPathName());
         if (Desc.CachedProperty)
         {
-            Row->SetField(TEXT("value"), McpPropertyReflection::ExportPropertyToJsonValueOrText(const_cast<uint8*>(Bag->GetValue().GetMemory()), const_cast<FProperty*>(Desc.CachedProperty)));
+            Row->SetField(TEXT("value"), ExportPCGParameterValue(Bag->GetValue().GetMemory(), Desc.CachedProperty));
             Row->SetBoolField(TEXT("overridden"), Instance && Instance->IsPropertyOverridden(Desc.CachedProperty));
         }
         const FPropertyBagPropertyDesc* Default = Defaults ? Defaults->FindPropertyDescByID(Desc.ID) : nullptr;
         if (Default && Default->CachedProperty)
         {
-            Row->SetField(TEXT("defaultValue"), McpPropertyReflection::ExportPropertyToJsonValueOrText(const_cast<uint8*>(Defaults->GetValue().GetMemory()), const_cast<FProperty*>(Default->CachedProperty)));
+            Row->SetField(TEXT("defaultValue"), ExportPCGParameterValue(Defaults->GetValue().GetMemory(), Default->CachedProperty));
         }
         Result.Add(MakeShared<FJsonValueObject>(Row));
     }

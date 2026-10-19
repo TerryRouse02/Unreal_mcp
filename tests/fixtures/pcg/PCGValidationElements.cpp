@@ -1,5 +1,8 @@
 #include "PCGValidationElements.h"
 #include "PCGContext.h"
+#include "PCGComponent.h"
+#include "Engine/World.h"
+#include "Misc/App.h"
 #include "PCGModule.h"
 #include "Curves/CurveFloat.h"
 #include "UObject/StrongObjectPtr.h"
@@ -47,6 +50,22 @@ protected:
         return false;
     }
 };
+}
+
+int64 UPCGValidationDelaySettings::ReplaceInFlightGeneration(UPCGComponent* Component)
+{
+    if (!IsInGameThread() || !IsValid(Component) || !Component->GetWorld() ||
+        Component->GetWorld()->WorldType != EWorldType::Editor ||
+        FCString::Strcmp(FApp::GetProjectName(), TEXT("PCGValidation")) != 0 ||
+        !Component->GetPathName().StartsWith(TEXT("/Game/MCP_PCG_Validation/Lifecycle_")) ||
+        Component->IsPartitioned() || Component->IsManagedByRuntimeGenSystem() ||
+        !Component->IsGenerating() || Component->IsCleaningUp()) return -1;
+
+    // Replace real native work in one game-thread turn; deferred Refresh may only cancel it.
+    Component->CancelGeneration();
+    if (Component->IsGenerating() || Component->IsCleaningUp()) return -1;
+    const FPCGTaskId Replacement = Component->GenerateLocalGetTaskId(true);
+    return Replacement == InvalidPCGTaskId ? -1 : static_cast<int64>(Replacement);
 }
 
 TArray<FPCGPinProperties> UPCGValidationDelaySettings::InputPinProperties() const

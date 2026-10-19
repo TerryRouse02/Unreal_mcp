@@ -29,18 +29,9 @@ const transformAssertions = meshPaths.flatMap((meshPath, row) => [
     path: `structuredContent.result.components.${row}.sampleTransforms.${index}.${field}`, approximately, tolerance,
   }))),
 ]);
-const subgraphPins = `import unreal
-assert unreal.SystemLibrary.get_game_name() == 'PCGValidation'
-graph = unreal.load_asset('${subgraphPath}')
-assert graph is not None
-for name, label in [('InputNode', 'In'), ('OutputNode', 'Out')]:
-    node = graph.get_editor_property(name)
-    settings = node.get_settings()
-    pin = unreal.PCGPinProperties()
-    pin.set_editor_property('label', label)
-    pin.set_editor_property('allowed_types', unreal.PCGDataTypeIdentifierHelpers.get_identifier_from_class(unreal.PCGPointData))
-    settings.set_editor_property('Pins', [pin])
-`;
+const pointBoundarySettings = label => ({ Pins: [{ Label: label, AllowedTypes: {
+  Ids: [{ Struct: '/Script/PCG.PCGDataTypeInfoPoint' }], CustomSubtype: -1,
+} }] });
 const cases = [
   ...(keepFixture ? [{ scenario: 'Create a uniquely owned saved map for independent-process verification', toolName: 'manage_level_structure',
     arguments: { action: 'create_level', levelName: 'Map', levelPath: root, bCreateWorldPartition: false, save: true, loadAfterCreate: true },
@@ -52,8 +43,17 @@ const cases = [
   { scenario: 'Create the owned custom PCG Blueprint element', toolName: 'manage_blueprint',
     arguments: { action: 'create_blueprint', name: 'BP_TaggedElement', savePath: root,
       parentClass: '/Script/PCGValidation.PCGValidationBlueprintElement' }, expected: 'success', abortOnFailure: true },
-  { scenario: 'Configure public point-only subgraph boundary pins', toolName: 'system_control',
-    arguments: { action: 'execute_python', code: subgraphPins }, expected: 'success', abortOnFailure: true },
+  { scenario: 'Read stable native boundary node IDs before configuring their pins', toolName: 'manage_pcg',
+    arguments: { action: 'get_pcg_graph', graphPath: subgraphPath, limit: 2, edgeLimit: 1 }, expected: 'success', abortOnFailure: true,
+    assertions: [{ path: 'structuredContent.result.items', length: 2 },
+      { path: 'structuredContent.result.items.0.input', equals: true }, { path: 'structuredContent.result.items.1.output', equals: true }],
+    captureResult: [{ key: 'subgraphInput', fromField: 'result.items.0.nodeId' }, { key: 'subgraphOutput', fromField: 'result.items.1.nodeId' },
+      { key: 'boundaryBefore', fromField: 'result.revision' }] },
+  pcg('Configure point-only subgraph input through the PCG write API', { action: 'set_pcg_node_settings', graphPath: subgraphPath,
+    nodeId: captured('subgraphInput'), settings: pointBoundarySettings('In'), expectedGraphRevision: captured('boundaryBefore') },
+    { captureResult: [{ key: 'boundaryAfterInput', fromField: 'result.revision' }] }),
+  pcg('Configure point-only subgraph output through the PCG write API', { action: 'set_pcg_node_settings', graphPath: subgraphPath,
+    nodeId: captured('subgraphOutput'), settings: pointBoundarySettings('Out'), expectedGraphRevision: captured('boundaryAfterInput') }),
   read('Capture the subgraph before random transform authoring', subgraphPath, 'subgraphRevision'),
   pcg('Author a seeded transform inside the real subgraph', { action: 'batch_edit_pcg_graph', graphPath: subgraphPath,
     expectedGraphRevision: captured('subgraphRevision'), operations: [
@@ -106,6 +106,10 @@ const cases = [
   ...(keepFixture ? [
     pcg('Persist a graph parameter default for cold-load inheritance', { action: 'add_pcg_parameter', graphPath,
       name: 'Spacing', type: 'Double', value: 200 }),
+    pcg('Persist an exact full-range Int64 graph default', { action: 'add_pcg_parameter', graphPath,
+      name: 'ExactInteger', type: 'Int64', value: '9223372036854775807' }),
+    pcg('Persist a mixed exact Int64 array default', { action: 'add_pcg_parameter', graphPath,
+      name: 'ExactIntegerArray', type: 'Int64', container: 'array', value: ['9007199254740993', '-9223372036854775808', 7] }),
     pcg('Persist a GUID-bound getter alongside the complex workflow', { action: 'add_pcg_node', graphPath,
       settingsClass: 'PCGUserParameterGetSettings', parameterName: 'Spacing' },
       { captureResult: [{ key: 'getterNodeId', fromField: 'result.nodeId' }] }),
@@ -130,6 +134,8 @@ const cases = [
   ...(keepFixture ? [
     pcg('Persist an independent component graph-parameter override', { action: 'set_pcg_parameter', target: 'component',
       componentPath, name: 'Spacing', value: 333 }),
+    pcg('Persist the exact full-range Int64 component override', { action: 'set_pcg_parameter', target: 'component',
+      componentPath, name: 'ExactInteger', value: '-9223372036854775808' }),
     { scenario: 'Wait for any native auto-generation caused by the override', toolName: 'manage_pcg',
       arguments: { action: 'get_pcg_component_results', componentPath, sampleLimit: 0 }, expected: 'success',
       pollUntil: { timeoutMs: 20000, intervalMs: 1000 }, abortOnFailure: true, assertions: [
@@ -217,6 +223,8 @@ manifest = dict(root='${root}', mapPath='${mapPath}', graphPath='${graphPath}', 
     blueprintPath='${blueprintPath}', actorName=component.get_owner().get_name(), componentPath=component.get_path_name(),
     getterNodeId='${captured('getterNodeId')}', getterGuid='${captured('getterGuid')}', parameterDefaults=dict(Spacing=200),
     parameterIds=dict(Spacing='${captured('spacingId')}'), componentOverride=333,
+    exactIntegerDefault='9223372036854775807', exactIntegerOverride='-9223372036854775808',
+    exactIntegerArray=['9007199254740993', '-9223372036854775808', 7],
     sampleY=[${meshPaths.map((_, mesh) => `[${[0, 1, 2, 3].map(index => captured(`randomY${mesh}_${index}`)).join(', ')}]`).join(', ')}],
     nodeIds=[node.get_name() for node in graph.get_editor_property('Nodes')],
     subgraphNodeIds=[node.get_name() for node in subgraph.get_editor_property('Nodes')])

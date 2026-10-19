@@ -25,6 +25,13 @@ const typedParameters = [
   { name: 'Int32Value', type: 'Int32', value: 123, readback: 123 },
   { name: 'Int64Value', type: 'Int64', value: 1234567890123, readback: 1234567890123 },
   { name: 'Int64List', type: 'Int64', container: 'array', value: [123, 456], readback: 123 },
+  { name: 'Int64Maximum', type: 'Int64', value: '9223372036854775807', readback: '9223372036854775807' },
+  { name: 'Int64Minimum', type: 'Int64', value: '-9223372036854775808', readback: '-9223372036854775808' },
+  { name: 'Int64Safe', type: 'Int64', value: 9007199254740991, readback: 9007199254740991 },
+  { name: 'Int64NegativeSafe', type: 'Int64', value: -9007199254740991, readback: -9007199254740991 },
+  { name: 'Int64ExactList', type: 'Int64', container: 'array',
+    value: ['9007199254740993', '-9223372036854775808', '9223372036854775807', 9007199254740991, 0],
+    readbackValues: ['9007199254740993', '-9223372036854775808', '9223372036854775807', 9007199254740991, 0] },
   { name: 'FloatValue', type: 'Float', value: 1.25, readback: 1.25 },
   { name: 'FloatList', type: 'Float', container: 'array', value: [1.25, 2.5], readback: 1.25 },
   { name: 'DoubleList', type: 'Double', container: 'array', value: [2.5, 5.25], readback: 2.5 },
@@ -67,8 +74,18 @@ const typedParameterCases = typedParameters.flatMap(parameter => {
     assertions.push({ path: `structuredContent.result.parameters.0.value${container === 'array' ? '.0' : ''}`,
       includes: 'Translation=(X=1.000000,Y=2.000000,Z=3.000000)' });
   }
+  if (parameter.type === 'Int64') {
+    if (container === 'none') assertions.push({ path: 'structuredContent.result.parameters.0.defaultValue', equals: parameter.readback });
+    const expected = parameter.readbackValues ?? (container === 'array' ? parameter.value : undefined);
+    expected?.forEach((value, index) => {
+      assertions.push({ path: 'structuredContent.result.parameters.0.value.' + index, equals: value });
+      assertions.push({ path: 'structuredContent.result.parameters.0.defaultValue.' + index, equals: value });
+    });
+  }
   return [
-    { scenario: `Add ${container} ${parameter.type} PCG parameter ${parameter.name}`, toolName: 'manage_pcg', arguments: arguments_, expected: 'success' },
+    { scenario: `Add ${container} ${parameter.type} PCG parameter ${parameter.name}`, toolName: 'manage_pcg', arguments: arguments_, expected: 'success',
+      ...(parameter.type === 'Int64' && container === 'none' ? { assertions: [{ path: 'structuredContent.result.parameters',
+        includesObject: { name: parameter.name, value: parameter.readback, defaultValue: parameter.readback } }] } : {}) },
     read(`Read back ${parameter.type} PCG parameter ${parameter.name}`, parameter.name, { assertions }),
   ];
 });
