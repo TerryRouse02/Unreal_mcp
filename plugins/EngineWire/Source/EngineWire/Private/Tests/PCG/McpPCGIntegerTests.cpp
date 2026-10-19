@@ -90,4 +90,58 @@ bool FMcpPCGIntegerReadbackTest::RunTest(const FString& Parameters)
     }
     return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMcpPCGIntegerInputPrecisionTest, "EngineWire.PCG.Int64RejectsUnsafeJsonNumbers",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FMcpPCGIntegerInputPrecisionTest::RunTest(const FString& Parameters)
+{
+    using namespace McpPCGHandlers;
+    FInstancedPropertyBag Source;
+    Source.AddProperties({FPropertyBagPropertyDesc(FName(TEXT("Exact")), EPropertyBagPropertyType::Int64),
+        FPropertyBagPropertyDesc(FName(TEXT("ExactArray")), EPropertyBagContainerType::Array, EPropertyBagPropertyType::Int64)});
+    const auto* Scalar = CastFieldChecked<FInt64Property>(Source.FindPropertyDescByName(TEXT("Exact"))->CachedProperty);
+    const auto* Array = CastFieldChecked<FArrayProperty>(Source.FindPropertyDescByName(TEXT("ExactArray"))->CachedProperty);
+    Scalar->SetPropertyValue_InContainer(Source.GetMutableValue().GetMemory(), 41);
+    FScriptArrayHelper Original(Array, Array->ContainerPtrToValuePtr<void>(Source.GetMutableValue().GetMemory()));
+    Original.AddValues(2);
+    const auto* Inner = CastFieldChecked<FInt64Property>(Array->Inner);
+    Inner->SetPropertyValue(Original.GetRawPtr(0), 7);
+    Inner->SetPropertyValue(Original.GetRawPtr(1), 8);
+    FInstancedPropertyBag Staged;
+    FString Error;
+    for (double Unsafe : {9007199254740992.0, -9007199254740992.0, 9007199254740994.0, -9007199254740994.0})
+    {
+        Error.Reset();
+        TestFalse(TEXT("Unsafe JSON number cannot stage an Int64 scalar"), StagePCGParameterValue(Source, TEXT("Exact"),
+            MakeShared<FJsonValueNumber>(Unsafe), Staged, Error));
+        TestTrue(TEXT("Unsafe scalar directs the caller to decimal strings"), Error.Contains(TEXT("decimal string")));
+        Error.Reset();
+        const TArray<TSharedPtr<FJsonValue>> Items = {MakeShared<FJsonValueNumber>(1), MakeShared<FJsonValueNumber>(Unsafe)};
+        TestFalse(TEXT("Unsafe element cannot stage an Int64 array"), StagePCGParameterValue(Source, TEXT("ExactArray"),
+            MakeShared<FJsonValueArray>(Items), Staged, Error));
+        TestTrue(TEXT("Unsafe array directs the caller to decimal strings"), Error.Contains(TEXT("decimal string")));
+        TestEqual(TEXT("Refused staging preserves the source scalar"), Scalar->GetPropertyValue_InContainer(Source.GetValue().GetMemory()), static_cast<int64>(41));
+        TestEqual(TEXT("Refused staging preserves the source array length"), Original.Num(), 2);
+        TestEqual(TEXT("Refused staging preserves the source array prefix"), Inner->GetPropertyValue(Original.GetRawPtr(0)), static_cast<int64>(7));
+        TestEqual(TEXT("Refused staging preserves the source array suffix"), Inner->GetPropertyValue(Original.GetRawPtr(1)), static_cast<int64>(8));
+    }
+    for (int64 Safe : {0LL, 9007199254740991LL, -9007199254740991LL})
+    {
+        if (!TestTrue(TEXT("Safe numeric Int64 scalar still stages"), StagePCGParameterValue(Source, TEXT("Exact"),
+            MakeShared<FJsonValueNumber>(static_cast<double>(Safe)), Staged, Error))) return false;
+        TestEqual(TEXT("Safe numeric scalar retains its exact value"), Scalar->GetPropertyValue_InContainer(Staged.GetValue().GetMemory()), Safe);
+        const TArray<TSharedPtr<FJsonValue>> Items = {MakeShared<FJsonValueNumber>(static_cast<double>(Safe))};
+        if (!TestTrue(TEXT("Safe numeric Int64 array still stages"), StagePCGParameterValue(Source, TEXT("ExactArray"),
+            MakeShared<FJsonValueArray>(Items), Staged, Error))) return false;
+        FScriptArrayHelper StagedArray(Array, Array->ContainerPtrToValuePtr<void>(Staged.GetMutableValue().GetMemory()));
+        TestEqual(TEXT("Safe numeric array retains its exact value"), Inner->GetPropertyValue(StagedArray.GetRawPtr(0)), Safe);
+    }
+    for (int64 Exact : {9007199254740992LL, -9007199254740992LL})
+    {
+        if (!TestTrue(TEXT("Equivalent unsafe-range integer remains valid as decimal text"), StagePCGParameterValue(Source, TEXT("Exact"),
+            MakeShared<FJsonValueString>(LexToString(Exact)), Staged, Error))) return false;
+        TestEqual(TEXT("Decimal text stages without rounding"), Scalar->GetPropertyValue_InContainer(Staged.GetValue().GetMemory()), Exact);
+    }
+    return true;
+}
 #endif

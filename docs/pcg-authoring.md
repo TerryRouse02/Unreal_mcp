@@ -191,8 +191,10 @@ Object, Class, SoftObject and SoftClass, as scalars or a single array container.
 Struct support is Vector, Rotator and Transform. Enum/struct/reference types use
 `typeObject`. Int64 values outside the JSON safe-integer range
 (`-9007199254740991` through `9007199254740991`) must be supplied as decimal
-strings; native Int64 defaults/effective values outside that range are returned
-as exact decimal strings, including individual array elements. Values within
+strings. Unsafe JSON numbers are refused before adding a parameter or establishing
+an override, including individual array elements; they are not silently accepted
+after floating-point rounding. Native Int64 defaults/effective values outside that
+range are returned as exact decimal strings, including individual array elements. Values within
 that range remain JSON numbers. For example, `"9223372036854775807"` round-trips
 without double-precision rounding. Array writes are limited to 10,000 elements
 and validated element by element. Floating-point inputs must be finite and fit their native type;
@@ -432,3 +434,10 @@ lifecycle/mapping checks, not a claim of manual visual inspection or GPU renderi
 The native managed-result stress fixture uses unregistered test components and
 real instance storage; it measures full-inventory counting with bounded on-page
 transform exports, not performance of a production scene or its renderer.
+
+## Planned coverage work packages
+
+The [PCG coverage work packages](pcg-roadmap/README.md) define the remaining
+implementation backlog, dependencies and acceptance gates. They are plans, not
+additional callable actions or a claim that all PCG modes are supported. Use the
+capability records and current guide above for the shipping contract.

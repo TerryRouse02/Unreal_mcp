@@ -7,8 +7,16 @@ namespace McpPCGHandlers
 {
 namespace
 {
-bool ValidateBoolean(const TSharedPtr<FJsonValue>& Value, FString& OutError)
+bool ValidateScalar(EPropertyBagPropertyType Type, const TSharedPtr<FJsonValue>& Value, FString& OutError)
 {
+    constexpr double MaxSafeInteger = 9007199254740991.0;
+    if (Type == EPropertyBagPropertyType::Int64 && Value.IsValid() && Value->Type == EJson::Number &&
+        FMath::Abs(Value->AsNumber()) > MaxSafeInteger)
+    {
+        OutError = TEXT("Int64 numbers outside the JSON safe-integer range must be supplied as decimal strings.");
+        return false;
+    }
+    if (Type != EPropertyBagPropertyType::Bool) return true;
     if (Value.IsValid())
     {
         if (Value->Type == EJson::Boolean) return true;
@@ -67,12 +75,12 @@ bool StagePCGParameterValue(const FInstancedPropertyBag& Source, FName Name, con
         Values.AddValues(Value->AsArray().Num());
         for (int32 Index = 0; Index < Value->AsArray().Num(); ++Index)
         {
-            if (Desc->ValueType == EPropertyBagPropertyType::Bool && !ValidateBoolean(Value->AsArray()[Index], OutError)) return false;
+            if (!ValidateScalar(Desc->ValueType, Value->AsArray()[Index], OutError)) return false;
             if (!::ApplyJsonValueToProperty(Values.GetRawPtr(Index), Array->Inner, Value->AsArray()[Index], OutError)) return false;
         }
         return true;
     }
-    if (Desc->ValueType == EPropertyBagPropertyType::Bool && !ValidateBoolean(Value, OutError)) return false;
+    if (!ValidateScalar(Desc->ValueType, Value, OutError)) return false;
     return ::ApplyJsonValueToProperty(OutBag.GetMutableValue().GetMemory(), const_cast<FProperty*>(Desc->CachedProperty), Value, OutError);
 }
 
