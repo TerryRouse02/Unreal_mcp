@@ -51,12 +51,12 @@ bool AppendExactNumbers(const FProperty* Property, void* Value, FArchive& Writer
     return true;
 }
 
-bool AppendProperty(const FProperty* Property, void* Container, UObject* Owner, FArchive& Writer)
+bool AppendProperty(const FProperty* Property, void* Container, UObject* Owner, FArchive& Writer, const FString* TextOverride = nullptr)
 {
     FString Name = Property->GetName(), Text;
-    // Native FText history serialization may change even when its authored export text is identical.
-    // Use stable export text for semantic structure, with exact numeric bits alongside it.
-    Property->ExportText_InContainer(0, Text, Container, nullptr, Owner, PPF_None);
+    // Callers may canonicalize presentation-only text; numeric bits remain exact in either case.
+    if (TextOverride) Text = *TextOverride;
+    else Property->ExportText_InContainer(0, Text, Container, nullptr, Owner, PPF_None);
     Writer << Name;
     Writer << Text;
     for (int32 Index = 0; Index < Property->ArrayDim; ++Index)
@@ -75,7 +75,8 @@ FString FinishHash(const TArray<uint8>& Bytes)
 }
 }
 
-FString FingerprintEditableProperties(UObject* Object, const TArray<FName>& AdditionalProperties)
+FString FingerprintEditableProperties(UObject* Object, const TArray<FName>& AdditionalProperties,
+    const TMap<FName, FString>& PropertyTextOverrides)
 {
     if (!Object) return FString();
     TArray<uint8> Bytes;
@@ -84,7 +85,7 @@ FString FingerprintEditableProperties(UObject* Object, const TArray<FName>& Addi
     {
         if ((!It->HasAnyPropertyFlags(CPF_Edit) && !AdditionalProperties.Contains(It->GetFName())) ||
             It->HasAnyPropertyFlags(CPF_Transient | CPF_Deprecated)) continue;
-        if (!AppendProperty(*It, Object, Object, Writer)) return FString();
+        if (!AppendProperty(*It, Object, Object, Writer, PropertyTextOverrides.Find(It->GetFName()))) return FString();
     }
     return FinishHash(Bytes);
 }

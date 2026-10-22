@@ -1,5 +1,5 @@
 {
-  "catalogRevision": "8ba95b9bddcdc693",
+  "catalogRevision": "aa12aac848629918",
   "recordCount": 423,
   "records": [
     {
@@ -20727,7 +20727,8 @@
           "search graph nodes",
           "filter graph nodes",
           "unused nodes",
-          "what writes a variable"
+          "what writes a variable",
+          "read blueprint graph nodes"
         ],
         "summary": "Inspect a Blueprint graph: its nodes (every one, those whose title, pin default, text or object path matches a filter, or the unused ones), node details, pin details, or the available node types.",
         "whenToUse": [
@@ -21039,7 +21040,7 @@
       "hashes": {
         "algorithm": "sha256",
         "schema": "8f33459cd2cac8f83bcb51145c73160c2e2690127fcbfd6b15a32d354e44c573",
-        "content": "9f54d72976fe749a9fc8fe28d1caee96a0b17c539b5d65c503f2184a4f0b62ce"
+        "content": "e14e43dad5b3f4d4ed858f246e8b1a9b2fb3e022a4f00a563f261b86b90fb866"
       }
     },
     {
@@ -80800,7 +80801,7 @@
             },
             "settings": {
               "type": "object",
-              "description": "UPCGSettings property key-value pairs applied by reflection.",
+              "description": "UPCGSettings property paths with staged native preflight. On UE 5.7+, exact native static mesh spawners support MeshSelectorType (PCGMeshSelectorWeighted or PCGMeshSelectorByAttribute) and InstanceDataPackerType (PCGInstanceDataPackerByAttribute or null) before owned dependent paths. Existing parameter pointers are read-only; same types preserve parameters. Type changes require native PCG work idle and do not support Blueprint/custom classes. Packer AttributeSelectors accept native export text, e.g. PCGBegin($Density)PCGEnd. meshPath retains weighted single-entry reset semantics; a conflicting explicit selector type is refused.",
               "additionalProperties": true,
               "x-unreal-reflection-boundary": true
             },
@@ -81048,8 +81049,8 @@
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "7362e11c67aa786f584c1cd69594bc6c69238a6bbba0efec0834fa101d244b77",
-        "content": "a6136f735cbc7d2d0542ba02095340dba2409118aac5ae3d69d89b6348c56080"
+        "schema": "0c39437dc1593a37afb55228ed3e49d1a14582791b5fc2cc76bba554815e3575",
+        "content": "009895b9136c9c0cdfd3d9c97a5d7ec4c7f1b7e9fb901a529105547c554ca93d"
       }
     },
     {
@@ -81871,7 +81872,7 @@
             },
             "settings": {
               "type": "object",
-              "description": "UPCGSettings property key-value pairs applied by reflection.",
+              "description": "UPCGSettings property paths with staged native preflight. On UE 5.7+, exact native static mesh spawners support MeshSelectorType (PCGMeshSelectorWeighted or PCGMeshSelectorByAttribute) and InstanceDataPackerType (PCGInstanceDataPackerByAttribute or null) before owned dependent paths. Existing parameter pointers are read-only; same types preserve parameters. Type changes require native PCG work idle and do not support Blueprint/custom classes. Packer AttributeSelectors accept native export text, e.g. PCGBegin($Density)PCGEnd. meshPath retains weighted single-entry reset semantics; a conflicting explicit selector type is refused.",
               "additionalProperties": true,
               "x-unreal-reflection-boundary": true
             },
@@ -82224,8 +82225,8 @@
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "0cfe0f56e8792c13dea74dd62afd3710e8da8a5f2d115fb95ac854fea17b3757",
-        "content": "c6d3c9a0785243afbe35f4cd20f382c12162e985c4e46cf5a4cb6a2efd577db0"
+        "schema": "adc69ee1401b4c1e81f3aa329afa0a56538e30c1fbbbc57a32f788869ee45a5a",
+        "content": "68b056a7ada91f104e95decdbd9f6729a5b3015656fa0451fadb676be6bd4387"
       }
     },
     {
@@ -83084,12 +83085,18 @@
       "aliases": [
         "manage_pcg.list_pcg_node_types",
         "manage_pcg.get_pcg_settings_schema",
+        "manage_pcg.get_pcg_node_schema",
         "manage_pcg.get_pcg_graph",
         "manage_pcg.get_pcg_editor_graph",
         "manage_pcg.validate_pcg_graph",
         "manage_pcg.get_pcg_parameters",
         "manage_pcg.get_pcg_operation_status",
-        "manage_pcg.get_pcg_component_results"
+        "manage_pcg.get_pcg_component_results",
+        "manage_pcg.list_pcg_data",
+        "manage_pcg.get_pcg_data_schema",
+        "manage_pcg.create_pcg_data_view",
+        "manage_pcg.read_pcg_data",
+        "manage_pcg.release_pcg_data_view"
       ],
       "legacyIds": [
         {
@@ -83108,6 +83115,13 @@
           "action": "get_pcg_settings_schema",
           "folded": {
             "view": "settings_schema"
+          }
+        },
+        {
+          "tool": "manage_pcg",
+          "action": "get_pcg_node_schema",
+          "folded": {
+            "view": "node_schema"
           }
         },
         {
@@ -83151,6 +83165,41 @@
           "folded": {
             "view": "component_results"
           }
+        },
+        {
+          "tool": "manage_pcg",
+          "action": "list_pcg_data",
+          "folded": {
+            "view": "data"
+          }
+        },
+        {
+          "tool": "manage_pcg",
+          "action": "get_pcg_data_schema",
+          "folded": {
+            "view": "data_schema"
+          }
+        },
+        {
+          "tool": "manage_pcg",
+          "action": "create_pcg_data_view",
+          "folded": {
+            "view": "create_data_view"
+          }
+        },
+        {
+          "tool": "manage_pcg",
+          "action": "read_pcg_data",
+          "folded": {
+            "view": "data_rows"
+          }
+        },
+        {
+          "tool": "manage_pcg",
+          "action": "release_pcg_data_view",
+          "folded": {
+            "view": "release_data_view"
+          }
         }
       ],
       "discovery": {
@@ -83168,6 +83217,9 @@
           "pcg node discovery",
           "pcg property defaults",
           "inspect pcg node configuration",
+          "pcg node instance schema",
+          "inspect initialized pcg selector",
+          "pcg owned settings properties",
           "read pcg graph",
           "inspect pcg connections",
           "pcg graph validation",
@@ -83178,19 +83230,45 @@
           "pcg generation completion",
           "pcg cleanup",
           "pcg operation status",
-          "pcg generated instance counts"
+          "pcg generated instance counts",
+          "pcg data inventory",
+          "pcg output datasets",
+          "pcg component data",
+          "pcg data schema",
+          "pcg dataset columns",
+          "pcg attribute types",
+          "pcg data projection",
+          "select pcg data fields",
+          "pcg materialized view",
+          "pcg view rows",
+          "read pcg point data",
+          "pcg projected attributes",
+          "pcg release view",
+          "release pcg dataset handle",
+          "pcg retained view memory"
         ],
-        "summary": "Discover PCG settings classes and schemas, read backend or existing editor graphs, or validate native pin compatibility.",
+        "summary": "Discover PCG classes, graphs and schemas, inspect root outputs or bounded immutable typed data views, and validate native pins without generation or save.",
         "whenToUse": [
           "view=node_types|settings_schema|graph|editor_graph|validation: Discover or inspect PCG state before editing.",
+          "view=node_schema: Discover enum, reference and array descriptors on a loaded graph node before configuring its existing settings.",
           "view=parameters: Inspect or parameterize reusable PCG graphs and independent instances on engines with supported native parameter APIs.",
-          "view=operation_status|component_results: Await or verify native PCG component operations on engines exposing the supported completion APIs."
+          "view=operation_status|component_results: Await or verify native PCG component operations on engines exposing the supported completion APIs.",
+          "view=data|data_schema|create_data_view|data_rows|release_data_view: Use only as an editor-local CPU read on Unreal 5.7+ for an unpartitioned, non-runtime-managed PCG component; this does not enable native execution-inspection/capture state.",
+          "view=data: Find the bounded root dataset handles owned by one exact current editor PCG component.",
+          "view=data_schema: Inspect bounded reflected attribute types and defaults before selecting a CPU data projection.",
+          "view=create_data_view: Materialize only selected CPU fields/attributes and a bounded source range for later historical row reads.",
+          "view=data_rows: Read only a page of rows from an existing immutable projection while its caller-local handle is valid.",
+          "view=release_data_view: Release one caller-owned process-local retention handle; dataset release cascades to its row views."
         ],
         "whenNotToUse": [
           "view=node_types|settings_schema|graph|editor_graph|validation: Generation completion or asset mutation is required.",
+          "view=node_schema: The graph is unloaded, a selector must be initialized, or property values, mutation or generation are required.",
           "view=parameters: Atomic node batches or asynchronous generation are needed. Cross-instance propagation is not a single-graph atomic edit.",
           "view=operation_status|component_results: A scheduling receipt is enough: the original execute_pcg_graph remains unchanged.",
-          "view=operation_status|component_results: Runtime generation, partitioned components, GPU validation or durable job recovery is required."
+          "view=operation_status|component_results: Runtime generation, partitioned components, GPU validation or durable job recovery is required.",
+          "view=data|data_schema|create_data_view|data_rows|release_data_view: Do not use on Unreal versions before 5.7 or when the exact component is not present in the current editor world.",
+          "view=data|data_schema|create_data_view|data_rows|release_data_view: Do not use for PCG generation, enabling native execution-inspection/capture state, GPU transfer, saving, or claims of world freshness.",
+          "view=data|data_schema|create_data_view|data_rows|release_data_view: Partitioned or runtime-managed PCG components are out of scope; retention is limited to bounded historical JSON and weak metadata, never native dataset capture."
         ]
       },
       "schemas": {
@@ -83210,8 +83288,8 @@
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100,
-              "description": "Maximum items, default 50."
+              "description": "Maximum items, default 50.",
+              "maximum": 100
             },
             "filter": {
               "type": "string",
@@ -83223,11 +83301,17 @@
             },
             "graphPath": {
               "type": "string",
-              "description": "PCG graph asset path."
+              "description": "Exact already-loaded PCG graph asset path; this read does not load assets or classes."
             },
             "nodeId": {
               "type": "string",
-              "description": "Only return the node with this exact identifier."
+              "description": "Exact backend node name returned by graph discovery/add. Titles, numeric indices and boundary aliases are refused."
+            },
+            "scopePath": {
+              "type": "string",
+              "maxLength": 512,
+              "default": "",
+              "description": "Existing relative settings scope, defaults to settings itself. At most eight dotted property names traversing by-value structs or hard subobjects owned by these settings. Null/shared/CDO/class/soft references and arrays/indices are refused; no initialization or load."
             },
             "includeSettings": {
               "type": "boolean",
@@ -83275,17 +83359,86 @@
               "maximum": 16,
               "description": "World-space instance transform samples per returned instanced component, default two (first and last)."
             },
+            "datasetId": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Nonempty opaque dataset handle (1–64 characters) returned by list_pcg_data, bound to its owning caller and exact component; the native handler enforces nonemptiness."
+            },
+            "domain": {
+              "type": "string",
+              "enum": [
+                "Data",
+                "Elements"
+              ],
+              "description": "PCG data domain to inspect; defaults to Elements."
+            },
+            "fields": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "transform",
+                  "density",
+                  "seed",
+                  "boundsMin",
+                  "boundsMax",
+                  "color",
+                  "steepness",
+                  "metadataEntry"
+                ]
+              },
+              "description": "Unique selected built-in fields; the native handler rejects duplicates; defaults to empty, but an explicit nonempty total selection across fields and attributes is required. Point transforms use native quaternion xyzw; Metadata Transform uses the declared native Euler-degrees conversion."
+            },
+            "attributes": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "string",
+                "maxLength": 1023,
+                "description": "Nonempty reflected attribute name; the native column validator enforces nonemptiness."
+              },
+              "description": "Unique nonempty reflected attribute names; defaults to empty. The native handler enforces nonemptiness and rejects duplicates. Unsupported descriptors/columns/refusals do not count as supported selections. Unsafe Int64 values are decimal strings and soft references remain paths."
+            },
+            "sourceOffset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647,
+              "description": "First source row; defaults to 0."
+            },
+            "sourceLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 256,
+              "description": "Maximum source rows; defaults to 64."
+            },
+            "viewId": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Nonempty opaque immutable data-view handle (1–64 characters) returned by create_pcg_data_view, bound to its owning caller and exact component; the native handler enforces nonemptiness and expired or invalidated handles deterministically return unavailable."
+            },
+            "handleId": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Nonempty caller-owned process-local datasetId or viewId to release (1–64 characters); the native handler enforces nonemptiness. This does not clean native PCG resources or grant destructive scope."
+            },
             "view": {
               "type": "string",
               "enum": [
                 "node_types",
                 "settings_schema",
+                "node_schema",
                 "graph",
                 "editor_graph",
                 "validation",
                 "parameters",
                 "operation_status",
-                "component_results"
+                "component_results",
+                "data",
+                "data_schema",
+                "create_data_view",
+                "data_rows",
+                "release_data_view"
               ],
               "description": "Which inspect pcg variant to run."
             }
@@ -83315,11 +83468,11 @@
             },
             "items": {
               "type": "array",
+              "description": "Paged node, class or property records.",
               "items": {
                 "type": "object",
                 "x-unreal-reflection-boundary": true
-              },
-              "description": "Paged node, class or property records."
+              }
             },
             "total": {
               "type": "integer",
@@ -83409,6 +83562,64 @@
             "settingsClass": {
               "type": "string",
               "description": "Resolved settings class."
+            },
+            "nodeId": {
+              "type": "string",
+              "description": "Exact backend node identity."
+            },
+            "scopePath": {
+              "type": "string",
+              "description": "Canonical relative scope path; empty denotes the settings instance."
+            },
+            "scopeType": {
+              "type": "string",
+              "description": "Actual already-existing class or struct type path for this scope."
+            },
+            "scopeKind": {
+              "type": "string",
+              "enum": [
+                "settings",
+                "owned_object",
+                "struct"
+              ],
+              "description": "Existing instance scope category."
+            },
+            "schemaSource": {
+              "type": "string",
+              "description": "existing_node_instance_metadata_only; class defaults and values are not included."
+            },
+            "isBlueprintSettings": {
+              "type": "boolean",
+              "description": "The root settings class was compiled from Blueprint; read metadata is not callback sandboxing."
+            },
+            "editPolicy": {
+              "type": "string",
+              "enum": [
+                "existing_native_staged_preflight_required",
+                "blueprint_callbacks_not_sandboxed"
+              ],
+              "description": "Existing mutation preflight boundary, never blanket setter/atomic-edit support."
+            },
+            "metadataOnly": {
+              "type": "boolean",
+              "description": "True: property metadata only, not values or an authorization grant."
+            },
+            "valuesIncluded": {
+              "type": "boolean",
+              "description": "False: use separate existing value reads; this action does not serialize instance values."
+            },
+            "loadedObjectsOnly": {
+              "type": "boolean",
+              "description": "True: no graph/class/soft-reference load or selector initialization."
+            },
+            "consistency": {
+              "type": "string",
+              "description": "per_call_instance_schema_not_value_snapshot."
+            },
+            "schema": {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Bounded metadata-only scope/items/total/offset/limit/truncated. Sorted descriptors include name/type/category/declaredIn/readOnly/editable/instancedReference and shallow typeDetails for enums, class constraints, structs and arrays/sets/maps (depth <=3). Up to 64 usable enum options with honest totals, separate hidden/MAX omission and exact decimal strings outside safe Int64 JSON range. Reflection edit flags do not promise actual setter support. At most 1024 visited / 256 eligible properties, 1024 characters per metadata string and 60000 encoded schema characters."
             },
             "target": {
               "type": "string",
@@ -83647,6 +83858,51 @@
             "snapshotKind": {
               "type": "string",
               "description": "Current inventory reads do not constitute a generation completion signal."
+            },
+            "datasetId": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Nonempty owner-bound dataset handle (up to 64 characters) whose live schema was read."
+            },
+            "viewId": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Nonempty caller-owned immutable process-local projection handle (up to 64 characters)."
+            },
+            "projection": {
+              "type": "object",
+              "x-unreal-reflection-boundary": true,
+              "description": "Frozen projection fields are domain, sourceOffset, sourceLimit, sourceTotal, rowCount, fields, attributes, attributeTypes[{name,typeId,typeName}], coordinateSpace, pointRotationEncoding, attributeTransformRotationEncoding, provenance and completeSourceRowRange. coordinateSpace is native_stored_no_conversion_bounds_are_point_local; pointRotationEncoding is quaternion_xyzw; attributeTransformRotationEncoding is native_quaternion_to_euler_degrees; provenance is current_component_root_generation_unknown. This is bounded immutable historical JSON/weak metadata, not a whole dataset, native dataset capture, world-freshness claim or generation/operation ID; current component inputs are unknown. Unsafe Int64 values are decimal strings and soft references remain paths."
+            },
+            "expiresInSeconds": {
+              "type": "number",
+              "description": "Remaining time in the 60-second process-local retention TTL."
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "x-unreal-reflection-boundary": true,
+                "description": "Typed projected row with sourceIndex and optional selected fields and attributes."
+              },
+              "description": "Rows from the frozen selected source range only, shaped as {sourceIndex, fields?, attributes?}. Page-encoded rows are capped at 60,000 characters; the complete handler result is capped at 80,000 before the outer 100,000-character gateway response cap. Unsafe Int64 values are decimal strings; point transforms use native quaternion xyzw; Metadata Transform uses native_quaternion_to_euler_degrees; soft references remain paths."
+            },
+            "rowCount": {
+              "type": "integer",
+              "description": "Total number of rows captured in the immutable projection, not the rows returned in this page."
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether rows remain in the frozen selected source range."
+            },
+            "handleId": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Nonempty caller-owned process-local datasetId or viewId addressed (up to 64 characters)."
+            },
+            "released": {
+              "type": "boolean",
+              "description": "Whether the caller-owned retention handle was released; a root dataset release also releases its row views."
             }
           },
           "required": [
@@ -83657,7 +83913,7 @@
       },
       "examples": [
         {
-          "title": "Discover PCG settings classes and schemas, read backend or existing editor graphs, or validate native pin compatibility.",
+          "title": "Discover PCG classes, graphs and schemas, inspect root outputs or bounded immutable typed data views, and validate native pins without generation or save.",
           "input": {
             "action": "inspect_pcg",
             "view": "node_types"
@@ -83698,31 +83954,45 @@
           "actions": {
             "node_types": "list_pcg_node_types",
             "settings_schema": "get_pcg_settings_schema",
+            "node_schema": "get_pcg_node_schema",
             "graph": "get_pcg_graph",
             "editor_graph": "get_pcg_editor_graph",
             "validation": "validate_pcg_graph",
             "parameters": "get_pcg_parameters",
             "operation_status": "get_pcg_operation_status",
-            "component_results": "get_pcg_component_results"
+            "component_results": "get_pcg_component_results",
+            "data": "list_pcg_data",
+            "data_schema": "get_pcg_data_schema",
+            "create_data_view": "create_pcg_data_view",
+            "data_rows": "read_pcg_data",
+            "release_data_view": "release_pcg_data_view"
           },
           "declaredBy": {
             "offset": [
               "node_types",
               "settings_schema",
+              "node_schema",
               "graph",
               "editor_graph",
               "validation",
               "parameters",
-              "component_results"
+              "component_results",
+              "data",
+              "data_schema",
+              "data_rows"
             ],
             "limit": [
               "node_types",
               "settings_schema",
+              "node_schema",
               "graph",
               "editor_graph",
               "validation",
               "parameters",
-              "component_results"
+              "component_results",
+              "data",
+              "data_schema",
+              "data_rows"
             ],
             "filter": [
               "node_types"
@@ -83731,15 +84001,20 @@
               "settings_schema"
             ],
             "graphPath": [
+              "node_schema",
               "graph",
               "editor_graph",
               "validation",
               "parameters"
             ],
             "nodeId": [
+              "node_schema",
               "graph",
               "editor_graph",
               "validation"
+            ],
+            "scopePath": [
+              "node_schema"
             ],
             "includeSettings": [
               "graph",
@@ -83765,7 +84040,12 @@
             "componentPath": [
               "parameters",
               "operation_status",
-              "component_results"
+              "component_results",
+              "data",
+              "data_schema",
+              "create_data_view",
+              "data_rows",
+              "release_data_view"
             ],
             "name": [
               "parameters"
@@ -83775,14 +84055,40 @@
             ],
             "sampleLimit": [
               "component_results"
+            ],
+            "datasetId": [
+              "data_schema",
+              "create_data_view"
+            ],
+            "domain": [
+              "data_schema",
+              "create_data_view"
+            ],
+            "fields": [
+              "create_data_view"
+            ],
+            "attributes": [
+              "create_data_view"
+            ],
+            "sourceOffset": [
+              "create_data_view"
+            ],
+            "sourceLimit": [
+              "create_data_view"
+            ],
+            "viewId": [
+              "data_rows"
+            ],
+            "handleId": [
+              "release_data_view"
             ]
           }
         }
       },
       "hashes": {
         "algorithm": "sha256",
-        "schema": "4804aebe4055419fbab9a4c8f5f18bbc1c643ee2ad0ac6b0ba50339ead47f331",
-        "content": "9e10ada138070cdef0f30398f3bec98722166f984afc75b571f985aa439fe82a"
+        "schema": "81a63fb67382b3c9b2ee06fb2358cf8fb3cb27a827437f757238983e0fe436f0",
+        "content": "9c70a1ebe35714d187b9f9e5689b5df20bb7a0eca031794f39648bf5cc95495e"
       }
     },
     {

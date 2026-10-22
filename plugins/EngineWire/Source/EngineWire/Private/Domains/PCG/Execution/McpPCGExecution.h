@@ -38,6 +38,7 @@ struct FPCGOperation
 UPCGComponent* ResolveExactPCGComponent(const TSharedPtr<FJsonObject>& Payload, FString& OutError);
 bool ResolvePCGPrincipal(UEngineWireSubsystem* Bridge, const FString& RequestId, TSharedPtr<FMcpBridgeWebSocket> Socket, FString& OutPrincipal);
 FString GetPCGInstanceRevision(UPCGComponent* Component);
+// Returns no partial inventory when traversal, time or response limits are exceeded.
 TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Offset = 0, int32 Limit = 50, int32 SampleLimit = 2);
 TArray<TSharedPtr<FJsonValue>> ReadPCGExecutionDiagnostics(UPCGComponent* Component, bool& bOutAvailable, int32& OutErrorCount);
 void ClearPCGExecutionDiagnostics(UPCGComponent* Component);
@@ -50,6 +51,7 @@ TSharedPtr<FPCGOperation> FindActivePCGOperation(UPCGComponent* Component, const
 void FinishPCGOperation(TSharedPtr<FPCGOperation> Operation, const FString& State, const FString& Message, const FString& Code = FString());
 TSharedPtr<FJsonObject> DescribePCGOperation(const TSharedPtr<FPCGOperation>& Operation);
 void ReleasePCGOperation(const TSharedPtr<FPCGOperation>& Operation);
+void ShutdownPCGOperations(UEngineWireSubsystem* Bridge = nullptr);
 void StartPCGOperationObserver(const TSharedPtr<FPCGOperation>& Operation);
 #endif
 }

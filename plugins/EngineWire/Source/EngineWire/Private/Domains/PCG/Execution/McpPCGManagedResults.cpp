@@ -1,6 +1,9 @@
 #include "Domains/PCG/Execution/McpPCGExecution.h"
 #if MCP_HAS_PCG_EXECUTION
-#include "PCGManagedResource.h"
+#include "Domains/PCG/Execution/McpPCGManagedInventory.h"
+#include "Policies/CondensedJsonPrintPolicy.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
 #include "Data/PCGBasePointData.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
@@ -13,49 +16,13 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
     Offset = FMath::Max(0, Offset);
     Limit = FMath::Clamp(Limit, 1, 100);
     SampleLimit = FMath::Clamp(SampleLimit, 0, 16);
+    FPCGReadBudget Budget;
+    FPCGManagedInventory Inventory;
+    if (!ReadBoundedPCGManagedInventory(Component, Budget, Inventory)) return nullptr;
+    const auto& Components = Inventory.Components;
+    const auto& Actors = Inventory.Actors;
+    const auto& RootActors = Inventory.RootActors;
     auto Result = McpHandlerUtils::CreateResultObject();
-    TSet<UActorComponent*> Components;
-    TSet<AActor*> Actors, RootActors;
-    int32 ResourceCount = 0, Unresolved = 0;
-    Component->ForEachManagedResource([&](UPCGManagedResource* Resource)
-    {
-        if (!Resource) return;
-        ++ResourceCount;
-        if (UPCGManagedComponent* Managed = Cast<UPCGManagedComponent>(Resource))
-        {
-            if (UActorComponent* Value = Managed->GeneratedComponent.Get()) Components.Add(Value);
-            else if (!Managed->GeneratedComponent.IsNull()) ++Unresolved;
-        }
-        if (UPCGManagedComponentList* Managed = Cast<UPCGManagedComponentList>(Resource))
-        {
-            for (const auto& Reference : Managed->GeneratedComponents)
-            {
-                if (UActorComponent* Value = Reference.Get()) Components.Add(Value);
-                else if (!Reference.IsNull()) ++Unresolved;
-            }
-        }
-        if (UPCGManagedActors* Managed = Cast<UPCGManagedActors>(Resource))
-        {
-            for (const auto& Reference : Managed->GetConstGeneratedActors())
-            {
-                if (AActor* Value = Reference.Get()) RootActors.Add(Value);
-                else if (!Reference.IsNull()) ++Unresolved;
-            }
-        }
-    });
-    for (AActor* Actor : RootActors)
-    {
-        Actors.Add(Actor);
-        TArray<AActor*> Children;
-        Actor->GetAllChildActors(Children, true);
-        for (AActor* Child : Children) if (Child) Actors.Add(Child);
-    }
-    for (AActor* Actor : Actors)
-    {
-        TArray<UActorComponent*> Owned;
-        Actor->GetComponents(Owned);
-        for (UActorComponent* Value : Owned) if (Value) Components.Add(Value);
-    }
     TArray<UActorComponent*> Sorted = Components.Array();
     Sorted.Sort([](const UActorComponent& A, const UActorComponent& B) { return A.GetPathName().Compare(B.GetPathName(), ESearchCase::CaseSensitive) < 0; });
     TArray<TSharedPtr<FJsonValue>> Rows;
@@ -63,6 +30,7 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
     int32 IsmCount = 0, HismCount = 0, ResourceIndex = 0;
     for (UActorComponent* Value : Sorted)
     {
+        if (!Budget.IsWithinTime()) return nullptr;
         const bool bEmitRow = ResourceIndex >= Offset && ResourceIndex - Offset < Limit;
         ++ResourceIndex;
         UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(Value);
@@ -103,6 +71,7 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
     SortedActors.Sort([](const AActor& A, const AActor& B) { return A.GetPathName().Compare(B.GetPathName(), ESearchCase::CaseSensitive) < 0; });
     for (int32 Index = FMath::Max(0, Offset); Index < SortedActors.Num() && ActorRows.Num() < FMath::Clamp(Limit, 1, 100); ++Index)
     {
+        if (!Budget.IsWithinTime()) return nullptr;
         auto Row = MakeShared<FJsonObject>();
         Row->SetStringField(TEXT("actorPath"), SortedActors[Index]->GetPathName());
         Row->SetBoolField(TEXT("rootManagedActor"), RootActors.Contains(SortedActors[Index]));
@@ -111,8 +80,10 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
     }
     int64 OutputPoints = 0;
     const auto& Output = Component->GetGeneratedGraphOutput().TaggedData;
+    if (Output.Num() > FPCGReadBudget::MaxObjects) return nullptr;
     for (int32 Index = 0; Index < Output.Num(); ++Index)
     {
+        if (!Budget.IsWithinTime()) return nullptr;
         const FPCGTaggedData& Tagged = Output[Index];
         const UPCGBasePointData* Points = Cast<UPCGBasePointData>(Tagged.Data);
         if (Points) OutputPoints += Points->GetNumPoints();
@@ -122,7 +93,12 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
         if (Tagged.Data) Row->SetStringField(TEXT("dataClass"), Tagged.Data->GetClass()->GetPathName());
         if (Points) Row->SetNumberField(TEXT("pointCount"), Points->GetNumPoints());
         TArray<TSharedPtr<FJsonValue>> Tags;
-        for (const FString& Tag : Tagged.Tags) if (Tags.Num() < 32) Tags.Add(MakeShared<FJsonValueString>(Tag));
+        for (const FString& Tag : Tagged.Tags)
+        {
+            if (Tags.Num() >= 32) break;
+            if (Tag.Len() > 1024) return nullptr;
+            Tags.Add(MakeShared<FJsonValueString>(Tag));
+        }
         Row->SetArrayField(TEXT("tags"), Tags);
         Row->SetBoolField(TEXT("tagsTruncated"), Tagged.Tags.Num() > Tags.Num());
         OutputRows.Add(MakeShared<FJsonValueObject>(Row));
@@ -130,24 +106,27 @@ TSharedPtr<FJsonObject> ReadPCGManagedResults(UPCGComponent* Component, int32 Of
     Result->SetStringField(TEXT("componentPath"), Component->GetPathName());
     Result->SetBoolField(TEXT("generating"), Component->IsGenerating());
     Result->SetBoolField(TEXT("cleaning"), Component->IsCleaningUp());
-    Result->SetNumberField(TEXT("managedResourceCount"), ResourceCount);
+    Result->SetNumberField(TEXT("managedResourceCount"), Inventory.ResourceCount);
     Result->SetNumberField(TEXT("managedComponentCount"), Components.Num());
     Result->SetNumberField(TEXT("managedRootActorCount"), RootActors.Num());
     Result->SetNumberField(TEXT("managedActorCount"), Actors.Num());
     Result->SetNumberField(TEXT("instanceCount"), static_cast<double>(Instances));
     Result->SetNumberField(TEXT("ismComponentCount"), IsmCount);
     Result->SetNumberField(TEXT("hismComponentCount"), HismCount);
-    Result->SetNumberField(TEXT("unresolvedResourceReferences"), Unresolved);
+    Result->SetNumberField(TEXT("unresolvedResourceReferences"), Inventory.Unresolved);
     Result->SetNumberField(TEXT("outputDataCount"), Output.Num());
     Result->SetNumberField(TEXT("outputPointCount"), static_cast<double>(OutputPoints));
     Result->SetNumberField(TEXT("offset"), Offset);
     Result->SetNumberField(TEXT("limit"), Limit);
-    Result->SetBoolField(TEXT("componentsTruncated"), Offset + Limit < Sorted.Num());
-    Result->SetBoolField(TEXT("actorsTruncated"), Offset + Limit < SortedActors.Num());
-    Result->SetBoolField(TEXT("outputTruncated"), Offset + Limit < Output.Num());
+    Result->SetBoolField(TEXT("componentsTruncated"), static_cast<int64>(Offset) + Limit < Sorted.Num());
+    Result->SetBoolField(TEXT("actorsTruncated"), static_cast<int64>(Offset) + Limit < SortedActors.Num());
+    Result->SetBoolField(TEXT("outputTruncated"), static_cast<int64>(Offset) + Limit < Output.Num());
     Result->SetArrayField(TEXT("components"), Page);
     Result->SetArrayField(TEXT("actors"), ActorRows);
     Result->SetArrayField(TEXT("outputs"), OutputRows);
+    FString Encoded;
+    auto Writer = TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&Encoded);
+    if (!FJsonSerializer::Serialize(Result.ToSharedRef(), Writer) || Encoded.Len() > 80000 || !Budget.IsWithinTime()) return nullptr;
     return Result;
 }
 }

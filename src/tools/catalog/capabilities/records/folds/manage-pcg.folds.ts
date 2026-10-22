@@ -23,9 +23,9 @@ export const MANAGE_PCG_FOLDS: readonly FoldSpec[] = [
   },
   {
     primary: 'inspect_pcg', selector: 'view',
-    summary: 'Discover PCG settings classes and schemas, read backend or existing editor graphs, or validate native pin compatibility.',
+    summary: 'Discover PCG classes, graphs and schemas, inspect root outputs or bounded immutable typed data views, and validate native pins without generation or save.',
     topics: ['inspect pcg graph', 'pcg node types', 'pcg settings schema', 'read pcg pins', 'validate pcg connections'],
-    members: { node_types: 'list_pcg_node_types', settings_schema: 'get_pcg_settings_schema', graph: 'get_pcg_graph', editor_graph: 'get_pcg_editor_graph', validation: 'validate_pcg_graph', parameters: 'get_pcg_parameters', operation_status: 'get_pcg_operation_status', component_results: 'get_pcg_component_results' },
+    members: { node_types: 'list_pcg_node_types', settings_schema: 'get_pcg_settings_schema', node_schema: 'get_pcg_node_schema', graph: 'get_pcg_graph', editor_graph: 'get_pcg_editor_graph', validation: 'validate_pcg_graph', parameters: 'get_pcg_parameters', operation_status: 'get_pcg_operation_status', component_results: 'get_pcg_component_results', data: 'list_pcg_data', data_schema: 'get_pcg_data_schema', create_data_view: 'create_pcg_data_view', data_rows: 'read_pcg_data', release_data_view: 'release_pcg_data_view' },
   },
   {
     primary: 'add_pcg_node', selector: 'nodeKind',

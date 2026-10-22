@@ -4,7 +4,7 @@
 
 # Action reference
 
-Catalog revision: `8ba95b9bddcdc693`
+Catalog revision: `aa12aac848629918`
 
 Both transports expose exactly ONE public MCP tool, `unreal`, with the four
 operations `search` / `describe` / `execute` / `configure`. The parent tools
@@ -480,7 +480,7 @@ validates against, so `execute` cannot accept an action this table omits.
 | `manage_pcg.edit_pcg_parameters` | `manage_pcg` | `add_pcg_parameter` | write | write | none | `manage_pcg.edit_pcg_parameters` `manage_pcg.add_pcg_parameter` `manage_pcg.set_pcg_parameter` `manage_pcg.rename_pcg_parameter` `manage_pcg.reset_pcg_parameter_override` |
 | `manage_pcg.execute_pcg_graph` | `manage_pcg` | `execute_pcg_graph` | write | write | none | `manage_pcg.execute_pcg_graph` |
 | `manage_pcg.generate_pcg_graph` | `manage_pcg` | `generate_pcg_graph` | write | write | none | `manage_pcg.generate_pcg_graph` |
-| `manage_pcg.inspect_pcg` | `manage_pcg` | `list_pcg_node_types` | read | read | none | `manage_pcg.inspect_pcg` `manage_pcg.list_pcg_node_types` `manage_pcg.get_pcg_settings_schema` `manage_pcg.get_pcg_graph` `manage_pcg.get_pcg_editor_graph` `manage_pcg.validate_pcg_graph` `manage_pcg.get_pcg_parameters` `manage_pcg.get_pcg_operation_status` `manage_pcg.get_pcg_component_results` |
+| `manage_pcg.inspect_pcg` | `manage_pcg` | `list_pcg_node_types` | read | read | none | `manage_pcg.inspect_pcg` `manage_pcg.list_pcg_node_types` `manage_pcg.get_pcg_settings_schema` `manage_pcg.get_pcg_node_schema` `manage_pcg.get_pcg_graph` `manage_pcg.get_pcg_editor_graph` `manage_pcg.validate_pcg_graph` `manage_pcg.get_pcg_parameters` `manage_pcg.get_pcg_operation_status` `manage_pcg.get_pcg_component_results` `manage_pcg.list_pcg_data` `manage_pcg.get_pcg_data_schema` `manage_pcg.create_pcg_data_view` `manage_pcg.read_pcg_data` `manage_pcg.release_pcg_data_view` |
 | `manage_pcg.mutate_pcg_graph` | `manage_pcg` | `disconnect_pcg_pins` | destructive | destructive | explicit | `manage_pcg.mutate_pcg_graph` `manage_pcg.disconnect_pcg_pins` `manage_pcg.remove_pcg_node` `manage_pcg.batch_edit_pcg_graph_destructive` |
 | `manage_pcg.remove_pcg_parameter` | `manage_pcg` | `remove_pcg_parameter` | destructive | destructive | explicit | `manage_pcg.remove_pcg_parameter` |
 | `manage_tools.disable_category` | `manage_tools` | `disable_category` | write | write | none | `manage_tools.disable_category` |

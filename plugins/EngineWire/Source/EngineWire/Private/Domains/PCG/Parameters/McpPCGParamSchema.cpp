@@ -29,7 +29,8 @@ bool BuildPCGParameterDesc(const TSharedPtr<FJsonObject>& Payload, FPropertyBagP
     else if (Type == EPropertyBagPropertyType::Struct)
     {
         TypeObject = LoadObject<UScriptStruct>(nullptr, *TypePath);
-        if (!TypeObject || (TypeObject->GetName() != TEXT("Vector") && TypeObject->GetName() != TEXT("Rotator") && TypeObject->GetName() != TEXT("Transform")))
+        if (!TypeObject || (TypeObject != TBaseStructure<FVector>::Get() && TypeObject != TBaseStructure<FRotator>::Get() &&
+            TypeObject != TBaseStructure<FTransform>::Get()))
         {
             OutError = TEXT("Struct parameters currently support native Vector, Rotator and Transform types only.");
             return false;

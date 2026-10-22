@@ -31,6 +31,15 @@ describe('PCG discovery and reliable editing contracts', () => {
     expect(generate?.schemas.output.properties).toHaveProperty('diagnosticsAvailable');
   });
 
+  it('requires the graph locator only when adding a graph parameter', () => {
+    const add = MANAGE_PCG_UNFOLDED_SOURCES.find(record => record.legacyIds.some(pair => pair.action === 'add_pcg_parameter'));
+    expect(add?.schemas.input.required).toContain('graphPath');
+    for (const action of ['set_pcg_parameter', 'rename_pcg_parameter', 'reset_pcg_parameter_override']) {
+      const record = MANAGE_PCG_UNFOLDED_SOURCES.find(source => source.legacyIds.some(pair => pair.action === action));
+      expect(record?.schemas.input.required).not.toContain('graphPath');
+    }
+  });
+
   it('keeps graph concurrency checks optional for all existing node edit aliases', () => {
     const edits = MANAGE_PCG_UNFOLDED_SOURCES.filter(record => {
       const action = record.legacyIds[0]?.action ?? '';

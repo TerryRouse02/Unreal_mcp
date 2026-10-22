@@ -1,8 +1,13 @@
 #include "Domains/PCG/McpPCGPrivate.h"
 #include "Foundation/BridgeHelpers/Properties/McpNestedPropPath.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
+#include "Domains/PCG/Spawning/McpPCGSpawnerTypes.h"
 
 #if MCP_HAS_PCG
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#include "Elements/ControlFlow/PCGSwitch.h"
+#endif
+
 namespace McpPCGHandlers
 {
 UClass* ResolvePCGSettingsClass(const FString& RawClassName)
@@ -69,9 +74,13 @@ bool ApplySettingsObject(UPCGSettings* Settings, const TSharedPtr<FJsonObject>& 
         return true;
     }
 
+    TSet<FString> HandledFields;
+    if (!ApplyPCGSpawnerTypes(Settings, SettingsObject, HandledFields, OutError)) return false;
+    OutAppliedCount = HandledFields.Num();
     for (const auto& Pair : SettingsObject->Values)
     {
         const FString FieldName(Pair.Key.Len(), *Pair.Key);
+        if (HandledFields.Contains(FieldName)) continue;
         void* Container = nullptr;
         FString ResolvedPath;
         FProperty* Property = McpResolvePropertyPath(Settings, FieldName, Container, ResolvedPath, OutError);
@@ -104,6 +113,11 @@ bool ApplySettingsObject(UPCGSettings* Settings, const TSharedPtr<FJsonObject>& 
         ++OutAppliedCount;
     }
 
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+    // Native direct edits must refresh the selection cache as well as the visible pins.
+    if (OutAppliedCount > 0 && Settings->GetClass() == UPCGSwitchSettings::StaticClass())
+        static_cast<UPCGSwitchSettings*>(Settings)->UpdateSettings();
+#endif
     return true;
 }
 

@@ -65,6 +65,11 @@ bool HandlePCGExecution(UEngineWireSubsystem* Bridge, const FString& RequestId, 
     {
         auto Result = ReadPCGManagedResults(Component, GetJsonIntField(Payload, TEXT("offset"), 0),
             GetJsonIntField(Payload, TEXT("limit"), 50), GetJsonIntField(Payload, TEXT("sampleLimit"), 2));
+        if (!Result.IsValid())
+        {
+            Bridge->SendAutomationError(Socket, RequestId, TEXT("A complete bounded managed inventory is unavailable; narrow the page or wait for accessible resources."), TEXT("PCG_SNAPSHOT_UNAVAILABLE"));
+            return true;
+        }
         Result->SetStringField(TEXT("snapshotKind"), TEXT("current_managed_inventory_not_a_completion_signal"));
         if (auto Active = FindActivePCGOperation(Component, Principal)) Result->SetStringField(TEXT("activeOperationId"), Active->Id);
         Bridge->SendAutomationResponse(Socket, RequestId, true, TEXT("PCG managed resources and bounded output summaries read."), Result);
@@ -110,7 +115,7 @@ bool HandlePCGExecution(UEngineWireSubsystem* Bridge, const FString& RequestId, 
         if (!bGenerate)
         {
             auto Remaining = ReadPCGManagedResults(Component, 0, 1, 0);
-            if (Remaining->GetNumberField(TEXT("managedResourceCount")) == 0 && Remaining->GetNumberField(TEXT("outputDataCount")) == 0)
+            if (Remaining.IsValid() && Remaining->GetNumberField(TEXT("managedResourceCount")) == 0 && Remaining->GetNumberField(TEXT("outputDataCount")) == 0)
             {
                 Op->bNoOp = true;
                 Op->bDiagnosticsAvailable = true;

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { assertIsolatedProject } from '../test-runner-isolation.mjs';
 import { evaluateAssertions } from '../test-runner-response-utils.mjs';
@@ -10,6 +11,19 @@ const expected = {
 const identity = (projectDir = '../../../../OwnedPCG/') => ({ structuredContent: {
   success: true, data: { projectName: 'OwnedPCG', projectDir, engineVersion: '5.7.4-51494982' },
 } });
+
+describe('PCG component suite isolation', () => {
+  it.each(['setup', 'save', 'cold-load'])('disables shared fixtures in the %s suite', suffix => {
+    const source = readFileSync(new URL(`../mcp-tools/world/manage-pcg-component-${suffix}.test.mjs`, import.meta.url), 'utf8');
+    const invocation = source.slice(source.lastIndexOf('\nrunToolTests('));
+    expect(invocation).toMatch(/cases,\s*\{\s*isolatedProject:\s*\{/);
+    for (const [field, variable] of [
+      ['projectName', 'UNREAL_MCP_TEST_PROJECT_NAME'], ['projectDir', 'UE_PROJECT_PATH'],
+      ['editorBaseDir', 'UE_EDITOR_BASE_DIR'], ['engineVersionPrefix', 'UNREAL_MCP_TEST_ENGINE_VERSION'],
+    ]) expect(invocation).toContain(`${field}: process.env.${variable}`);
+    expect(invocation).not.toContain('foldTwins: false');
+  });
+});
 
 describe('isolated integration project identity', () => {
   it('accepts matching relative editor paths and explicit local .uproject paths', () => {

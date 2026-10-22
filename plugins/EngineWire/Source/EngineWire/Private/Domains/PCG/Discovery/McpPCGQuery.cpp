@@ -1,5 +1,6 @@
 #include "Domains/PCG/Discovery/McpPCGRead.h"
 #include "Domains/PCG/Discovery/McpPCGBudget.h"
+#include "Domains/PCG/Discovery/Schema/McpPCGNodeSchemaAction.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
 #include "Domains/PCG/Editing/McpPCGConnect.h"
 #include "EdGraph/EdGraph.h"
@@ -91,6 +92,7 @@ TSharedPtr<FJsonObject> ReadPCGEditorGraphSnapshot(UPCGGraph* Graph)
 bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, const FString& SubAction,
     const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> Socket)
 {
+    if (SubAction == TEXT("get_pcg_node_schema")) return HandlePCGNodeSchema(Bridge, RequestId, Payload, Socket);
     if (SubAction != TEXT("list_pcg_node_types") && SubAction != TEXT("get_pcg_settings_schema") &&
         SubAction != TEXT("get_pcg_graph") && SubAction != TEXT("get_pcg_editor_graph") && SubAction != TEXT("validate_pcg_graph")) return false;
     auto Result = McpHandlerUtils::CreateResultObject();
@@ -181,7 +183,7 @@ bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, 
         Result->SetArrayField(TEXT("edges"), bPaged ? Edges : Page(Edges, EdgeOffset, EdgeLimit));
         Result->SetNumberField(TEXT("edgeTotal"), EdgeTotal);
         Result->SetNumberField(TEXT("edgeOffset"), EdgeOffset);
-        Result->SetBoolField(TEXT("edgesTruncated"), EdgeOffset + EdgeLimit < EdgeTotal);
+        Result->SetBoolField(TEXT("edgesTruncated"), EdgeOffset < EdgeTotal && EdgeLimit < EdgeTotal - EdgeOffset);
         if (SubAction == TEXT("get_pcg_editor_graph") || SubAction == TEXT("validate_pcg_graph"))
         {
             auto Check = CheckPCGEditorGraph(Graph);
@@ -206,7 +208,7 @@ bool HandlePCGDiscovery(UEngineWireSubsystem* Bridge, const FString& RequestId, 
     Result->SetNumberField(TEXT("total"), ItemTotal);
     Result->SetNumberField(TEXT("offset"), Offset);
     Result->SetNumberField(TEXT("limit"), Limit);
-    Result->SetBoolField(TEXT("truncated"), Offset + Limit < ItemTotal);
+    Result->SetBoolField(TEXT("truncated"), Offset < ItemTotal && Limit < ItemTotal - Offset);
     Bridge->SendAutomationResponse(Socket, RequestId, true, TEXT("PCG state read."), Result);
     return true;
 }

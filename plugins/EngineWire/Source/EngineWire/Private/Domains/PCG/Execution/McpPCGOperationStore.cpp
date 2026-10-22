@@ -117,6 +117,29 @@ void ReleasePCGOperation(const TSharedPtr<FPCGOperation>& Op)
     PurgeCompleted();
 }
 
+void ShutdownPCGOperations(UEngineWireSubsystem* Bridge)
+{
+    check(IsInGameThread());
+    TArray<TSharedPtr<FPCGOperation>> Owned;
+    for (const auto& Entry : Operations)
+        if (!Bridge || Entry.Value->Bridge.Get() == Bridge) Owned.Add(Entry.Value);
+    for (const auto& Op : Owned)
+    {
+        if (UEngineWireSubsystem* Owner = Op->Bridge.Get())
+            if (Op->bDeferred) Owner->ClearAutomationRequestCancellation(Op->RequestId);
+        Op->bObservationCancelled.store(true);
+        Op->bFinished = true;
+        Op->bResponded = true;
+        Op->Finished = FPlatformTime::Seconds();
+        Op->State = TEXT("observation_cancelled");
+        Op->ErrorCode = TEXT("PCG_OBSERVER_UNAVAILABLE");
+        Op->Message = TEXT("PCG observation ended with subsystem shutdown; native work was not cancelled.");
+        ReleasePCGOperation(Op);
+        Op->Bridge.Reset();
+        Operations.Remove(Op->Id);
+    }
+}
+
 TSharedPtr<FJsonObject> DescribePCGOperation(const TSharedPtr<FPCGOperation>& Op)
 {
     auto Result = McpHandlerUtils::CreateResultObject();
@@ -147,7 +170,7 @@ TSharedPtr<FJsonObject> DescribePCGOperation(const TSharedPtr<FPCGOperation>& Op
     if (!Op->ErrorCode.IsEmpty()) Result->SetStringField(TEXT("operationErrorCode"), Op->ErrorCode);
     Result->SetArrayField(TEXT("diagnostics"), Op->Diagnostics);
     if (Op->Resources.IsValid()) Result->SetObjectField(TEXT("resources"), Op->Resources);
-    Result->SetBoolField(TEXT("resourceSnapshotFromSuccessfulOperation"), Op->State == TEXT("succeeded"));
+    Result->SetBoolField(TEXT("resourceSnapshotFromSuccessfulOperation"), Op->State == TEXT("succeeded") && Op->Resources.IsValid());
     Result->SetStringField(TEXT("retention"), TEXT("current_process_128_completed_30_minutes"));
     return Result;
 }

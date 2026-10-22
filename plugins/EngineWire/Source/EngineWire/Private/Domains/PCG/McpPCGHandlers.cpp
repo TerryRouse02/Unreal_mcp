@@ -4,6 +4,7 @@
 #include "Domains/PCG/Editing/McpPCGMutations.h"
 #include "Domains/PCG/Parameters/McpPCGParameters.h"
 #include "Domains/PCG/Execution/McpPCGExecution.h"
+#include "Domains/PCG/Data/McpPCGDataActions.h"
 
 bool UEngineWireSubsystem::HandleManagePCGAction(
     const FString& RequestId, const FString& Action,
@@ -25,6 +26,12 @@ bool UEngineWireSubsystem::HandleManagePCGAction(
         return true;
     }
 
+    const FString SubAction = McpConsolidatedActions::GetPayloadSubAction(Payload);
+    if (SubAction == TEXT("get_pcg_node_schema") && !FModuleManager::Get().IsModuleLoaded(TEXT("PCG")))
+    {
+        SendAutomationError(Socket, RequestId, TEXT("Node-instance schema requires already-loaded PCG objects; no module, asset or class load was attempted."), TEXT("PCG_SCHEMA_UNAVAILABLE"));
+        return true;
+    }
     if (!FModuleManager::Get().IsModuleLoaded(TEXT("PCG")) &&
         (!FModuleManager::Get().ModuleExists(TEXT("PCG")) || !FModuleManager::Get().LoadModulePtr<IModuleInterface>(TEXT("PCG"))))
     {
@@ -32,13 +39,22 @@ bool UEngineWireSubsystem::HandleManagePCGAction(
         return true;
     }
 
-    const FString SubAction = McpConsolidatedActions::GetPayloadSubAction(Payload);
     if (SubAction.IsEmpty() || !McpConsolidatedActions::PCG().Contains(SubAction))
     {
         SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Unknown PCG subAction: %s"), *SubAction), TEXT("INVALID_SUBACTION"));
         return true;
     }
 
+    if (McpPCGHandlers::IsPCGDataAction(SubAction))
+    {
+#if MCP_HAS_PCG_EXECUTION
+        if (!PCGDataViews.IsValid()) PCGDataViews = MakeShared<McpPCGHandlers::FPCGDataViewStore>();
+        return McpPCGHandlers::HandlePCGData(this, RequestId, SubAction, Payload, Socket, *PCGDataViews);
+#else
+        SendAutomationError(Socket, RequestId, TEXT("Typed PCG data views require UE 5.7+ PCG APIs; no conversion or generation was attempted."), TEXT("PCG_DATA_NOT_AVAILABLE"));
+        return true;
+#endif
+    }
     if (McpPCGHandlers::HandlePCGDiscovery(this, RequestId, SubAction, Payload, Socket)) return true;
     if (McpPCGHandlers::HandlePCGExecution(this, RequestId, SubAction, Payload, Socket)) return true;
 

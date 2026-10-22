@@ -21454,6 +21454,16 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Canonical /Game asset path."
         },
+        "attributes": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "maxLength": 1023,
+            "description": "Nonempty reflected attribute name; the native column validator enforces nonemptiness."
+          },
+          "description": "Unique nonempty reflected attribute names; defaults to empty. The native handler enforces nonemptiness and rejects duplicates. Unsupported descriptors/columns/refusals do not count as supported selections. Unsafe Int64 values are decimal strings and soft references remain paths."
+        },
         "classPath": {
           "type": "string",
           "description": "Class path/name."
@@ -21486,6 +21496,19 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "boolean",
           "description": "Create a new PCG component when no selector is supplied."
         },
+        "datasetId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Nonempty opaque dataset handle (1–64 characters) returned by list_pcg_data, bound to its owning caller and exact component; the native handler enforces nonemptiness."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "Data",
+            "Elements"
+          ],
+          "description": "PCG data domain to inspect; defaults to Elements."
+        },
         "edgeLimit": {
           "type": "integer",
           "minimum": 1,
@@ -21514,6 +21537,24 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Authored revision returned by get_pcg_graph; mandatory for batches."
         },
+        "fields": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "enum": [
+              "transform",
+              "density",
+              "seed",
+              "boundsMin",
+              "boundsMax",
+              "color",
+              "steepness",
+              "metadataEntry"
+            ]
+          },
+          "description": "Unique selected built-in fields; the native handler rejects duplicates; defaults to empty, but an explicit nonempty total selection across fields and attributes is required. Point transforms use native quaternion xyzw; Metadata Transform uses the declared native Euler-degrees conversion."
+        },
         "filter": {
           "type": "string",
           "description": "Case-insensitive settings class path filter."
@@ -21528,11 +21569,16 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         },
         "graphPath": {
           "type": "string",
-          "description": "Graph asset path for target=graph."
+          "description": "Exact already-loaded PCG graph asset path; this read does not load assets or classes."
         },
         "gridSize": {
           "type": "number",
           "description": "PCG partition grid cell size."
+        },
+        "handleId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Nonempty caller-owned process-local datasetId or viewId to release (1–64 characters); the native handler enforces nonemptiness. This does not clean native PCG resources or grant destructive scope."
         },
         "includeSettings": {
           "type": "boolean",
@@ -21545,8 +21591,8 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         "limit": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 100,
-          "description": "Maximum items, default 50."
+          "description": "Maximum items, default 50.",
+          "maximum": 100
         },
         "meshPath": {
           "type": "string",
@@ -21571,7 +21617,7 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         },
         "nodeId": {
           "type": "string",
-          "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
+          "description": "Exact backend node name returned by graph discovery/add. Titles, numeric indices and boundary aliases are refused."
         },
         "nodeKind": {
           "type": "string",
@@ -21687,9 +21733,15 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Partition grid target scope: 'world' or 'component'."
         },
+        "scopePath": {
+          "type": "string",
+          "maxLength": 512,
+          "default": "",
+          "description": "Existing relative settings scope, defaults to settings itself. At most eight dotted property names traversing by-value structs or hard subobjects owned by these settings. Null/shared/CDO/class/soft references and arrays/indices are refused; no initialization or load."
+        },
         "settings": {
           "type": "object",
-          "description": "UPCGSettings property key-value pairs applied by reflection.",
+          "description": "UPCGSettings property paths with staged native preflight. On UE 5.7+, exact native static mesh spawners support MeshSelectorType (PCGMeshSelectorWeighted or PCGMeshSelectorByAttribute) and InstanceDataPackerType (PCGInstanceDataPackerByAttribute or null) before owned dependent paths. Existing parameter pointers are read-only; same types preserve parameters. Type changes require native PCG work idle and do not support Blueprint/custom classes. Packer AttributeSelectors accept native export text, e.g. PCGBegin($Density)PCGEnd. meshPath retains weighted single-entry reset semantics; a conflicting explicit selector type is refused.",
           "additionalProperties": true,
           "x-unreal-reflection-boundary": true
         },
@@ -21697,9 +21749,21 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Concrete PCG settings class path or existing alias."
         },
+        "sourceLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256,
+          "description": "Maximum source rows; defaults to 64."
+        },
         "sourceNodeId": {
           "type": "string",
           "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
+        },
+        "sourceOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "description": "First source row; defaults to 0."
         },
         "sourcePin": {
           "type": "string",
@@ -21783,14 +21847,25 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "enum": [
             "node_types",
             "settings_schema",
+            "node_schema",
             "graph",
             "editor_graph",
             "validation",
             "parameters",
             "operation_status",
-            "component_results"
+            "component_results",
+            "data",
+            "data_schema",
+            "create_data_view",
+            "data_rows",
+            "release_data_view"
           ],
           "description": "Which inspect pcg variant to run."
+        },
+        "viewId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Nonempty opaque immutable data-view handle (1–64 characters) returned by create_pcg_data_view, bound to its owning caller and exact component; the native handler enforces nonemptiness and expired or invalidated handles deterministically return unavailable."
         },
         "x": {
           "type": "number",
@@ -21885,9 +21960,18 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "boolean",
           "description": "More component rows remain."
         },
+        "consistency": {
+          "type": "string",
+          "description": "per_call_instance_schema_not_value_snapshot."
+        },
         "consistent": {
           "type": "boolean",
           "description": "Visible model nodes, pins, positions and edges map consistently."
+        },
+        "datasetId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Nonempty owner-bound dataset handle (up to 64 characters) whose live schema was read."
         },
         "details": {
           "type": "object",
@@ -21943,6 +22027,14 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "boolean",
           "description": "More edges remain."
         },
+        "editPolicy": {
+          "type": "string",
+          "enum": [
+            "existing_native_staged_preflight_required",
+            "blueprint_callbacks_not_sandboxed"
+          ],
+          "description": "Existing mutation preflight boundary, never blanket setter/atomic-edit support."
+        },
         "editorConsistent": {
           "type": "boolean",
           "description": "The existing editor representation maps consistently to visible model nodes and edges."
@@ -21980,6 +22072,10 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "boolean",
           "description": "This operation is still leased to native work. A timeout or cancelled observation does not stop native work."
         },
+        "expiresInSeconds": {
+          "type": "number",
+          "description": "Remaining time in the 60-second process-local retention TTL."
+        },
         "failedIndex": {
           "type": "integer",
           "description": "Zero-based failed step, or -1 for graph synchronization failure."
@@ -22004,6 +22100,15 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "number",
           "description": "New partition grid cell size."
         },
+        "handleId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Nonempty caller-owned process-local datasetId or viewId addressed (up to 64 characters)."
+        },
+        "hasMore": {
+          "type": "boolean",
+          "description": "Whether rows remain in the frozen selected source range."
+        },
         "hismComponentCount": {
           "type": "integer",
           "description": "Managed HISM components."
@@ -22016,17 +22121,21 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Component seed, grid and effective graph-instance parameter revision observed at start."
         },
+        "isBlueprintSettings": {
+          "type": "boolean",
+          "description": "The root settings class was compiled from Blueprint; read metadata is not callback sandboxing."
+        },
         "ismComponentCount": {
           "type": "integer",
           "description": "Managed ordinary ISM components, excluding HISM."
         },
         "items": {
           "type": "array",
+          "description": "Paged node, class or property records.",
           "items": {
             "type": "object",
             "x-unreal-reflection-boundary": true
-          },
-          "description": "Paged node, class or property records."
+          }
         },
         "kind": {
           "type": "string",
@@ -22043,6 +22152,10 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         "loadedClassesOnly": {
           "type": "boolean",
           "description": "Class discovery only enumerates loaded concrete settings classes."
+        },
+        "loadedObjectsOnly": {
+          "type": "boolean",
+          "description": "True: no graph/class/soft-reference load or selector initialization."
         },
         "loadedReferencesOnly": {
           "type": "boolean",
@@ -22071,6 +22184,10 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         "message": {
           "type": "string",
           "description": "Human-readable result message."
+        },
+        "metadataOnly": {
+          "type": "boolean",
+          "description": "True: property metadata only, not values or an authorization grant."
         },
         "nativeCancelled": {
           "type": "boolean",
@@ -22173,6 +22290,11 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "string",
           "description": "Authored graph revision before commit."
         },
+        "projection": {
+          "type": "object",
+          "x-unreal-reflection-boundary": true,
+          "description": "Frozen projection fields are domain, sourceOffset, sourceLimit, sourceTotal, rowCount, fields, attributes, attributeTypes[{name,typeId,typeName}], coordinateSpace, pointRotationEncoding, attributeTransformRotationEncoding, provenance and completeSourceRowRange. coordinateSpace is native_stored_no_conversion_bounds_are_point_local; pointRotationEncoding is quaternion_xyzw; attributeTransformRotationEncoding is native_quaternion_to_euler_degrees; provenance is current_component_root_generation_unknown. This is bounded immutable historical JSON/weak metadata, not a whole dataset, native dataset capture, world-freshness claim or generation/operation ID; current component inputs are unknown. Unsafe Int64 values are decimal strings and soft references remain paths."
+        },
         "references": {
           "type": "array",
           "items": {
@@ -22180,6 +22302,10 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
             "x-unreal-reflection-boundary": true
           },
           "description": "Loaded parameter getter references that prevent removal."
+        },
+        "released": {
+          "type": "boolean",
+          "description": "Whether the caller-owned retention handle was released; a root dataset release also releases its row views."
         },
         "residualChanges": {
           "type": "boolean",
@@ -22218,13 +22344,52 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
           "type": "boolean",
           "description": "Cross-instance parameter propagation is not claimed to be atomically rolled back."
         },
+        "rowCount": {
+          "type": "integer",
+          "description": "Total number of rows captured in the immutable projection, not the rows returned in this page."
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-unreal-reflection-boundary": true,
+            "description": "Typed projected row with sourceIndex and optional selected fields and attributes."
+          },
+          "description": "Rows from the frozen selected source range only, shaped as {sourceIndex, fields?, attributes?}. Page-encoded rows are capped at 60,000 characters; the complete handler result is capped at 80,000 before the outer 100,000-character gateway response cap. Unsafe Int64 values are decimal strings; point transforms use native quaternion xyzw; Metadata Transform uses native_quaternion_to_euler_degrees; soft references remain paths."
+        },
         "saved": {
           "type": "boolean",
           "description": "The edited graph was saved successfully."
         },
+        "schema": {
+          "type": "object",
+          "x-unreal-reflection-boundary": true,
+          "description": "Bounded metadata-only scope/items/total/offset/limit/truncated. Sorted descriptors include name/type/category/declaredIn/readOnly/editable/instancedReference and shallow typeDetails for enums, class constraints, structs and arrays/sets/maps (depth <=3). Up to 64 usable enum options with honest totals, separate hidden/MAX omission and exact decimal strings outside safe Int64 JSON range. Reflection edit flags do not promise actual setter support. At most 1024 visited / 256 eligible properties, 1024 characters per metadata string and 60000 encoded schema characters."
+        },
+        "schemaSource": {
+          "type": "string",
+          "description": "existing_node_instance_metadata_only; class defaults and values are not included."
+        },
         "scope": {
           "type": "string",
           "description": "Resolved scope: 'world' or 'component'."
+        },
+        "scopeKind": {
+          "type": "string",
+          "enum": [
+            "settings",
+            "owned_object",
+            "struct"
+          ],
+          "description": "Existing instance scope category."
+        },
+        "scopePath": {
+          "type": "string",
+          "description": "Canonical relative scope path; empty denotes the settings instance."
+        },
+        "scopeType": {
+          "type": "string",
+          "description": "Actual already-existing class or struct type path for this scope."
         },
         "settingsClass": {
           "type": "string",
@@ -22306,6 +22471,15 @@ export const generatedParentToolDefinitions: readonly ToolDefinition[] = [
         "validationScope": {
           "type": "string",
           "description": "Checks performed; this is not a generation result."
+        },
+        "valuesIncluded": {
+          "type": "boolean",
+          "description": "False: use separate existing value reads; this action does not serialize instance values."
+        },
+        "viewId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Nonempty caller-owned immutable process-local projection handle (up to 64 characters)."
         }
       },
       "additionalProperties": true

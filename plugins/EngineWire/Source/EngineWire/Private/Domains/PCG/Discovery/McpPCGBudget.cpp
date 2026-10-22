@@ -62,10 +62,16 @@ bool FPCGReadBudget::CheckGraph(UPCGGraph* Graph)
 {
     if (!Graph || Graph->GetNodes().Num() > MaxNodes - Nodes) return false;
     Nodes += Graph->GetNodes().Num();
+    if (++VisitedObjects > MaxObjects || !IsWithinTime()) return false;
     bool bComplete = CheckObject(Graph);
     const auto Visit = [&](UObject* Object)
     {
         if (!bComplete) return false;
+        if (++VisitedObjects > MaxObjects || !IsWithinTime())
+        {
+            bComplete = false;
+            return false;
+        }
         if (!IsPCGAuthoredObject(Object, Graph)) return true;
         bComplete = CheckObject(Object);
         if (const UPCGPin* Pin = Cast<UPCGPin>(Object))
@@ -75,7 +81,7 @@ bool FPCGReadBudget::CheckGraph(UPCGGraph* Graph)
         }
         return bComplete;
     };
-#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
     ForEachObjectWithOuterBreakable(Graph, Visit, true);
 #else
     ForEachObjectWithOuter(Graph, [&](UObject* Object) { Visit(Object); }, true);

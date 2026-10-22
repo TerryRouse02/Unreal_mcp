@@ -44,7 +44,7 @@ const specs: readonly { action: string; effect: 'read' | 'write' | 'destructive'
       type: { type: 'string', enum: ['Bool', 'Byte', 'Int32', 'Int64', 'Float', 'Double', 'Name', 'String', 'Enum', 'Struct', 'Object', 'Class', 'SoftObject', 'SoftClass'], description: 'Native property bag value type.' },
       typeObject: { type: 'string', description: 'Enum, struct or class path. Struct supports Vector, Rotator and Transform.' },
       container: { type: 'string', enum: ['none', 'array'], description: 'Scalar or one array container, default none.' },
-      value: { description: 'Optional initial default value, validated on a copied property bag before adding the parameter. Supply Int64 values outside the JSON safe-integer range as decimal strings.' } }, required: ['name', 'type'] },
+      value: { description: 'Optional initial default value, validated on a copied property bag before adding the parameter. Supply Int64 values outside the JSON safe-integer range as decimal strings.' } }, required: ['name', 'type', 'graphPath'] },
   { action: 'set_pcg_parameter', effect: 'write', family: 'pcg-parameters', summary: 'Set a graph default or an explicit instance override using native typed parameter setters.',
     inputProps: { ...write, value: { description: 'New typed value. Arrays are limited to 10000 elements. Supply Int64 values outside the JSON safe-integer range as decimal strings. Null explicitly clears an object reference.' } }, required: ['name', 'value'] },
   { action: 'rename_pcg_parameter', effect: 'write', family: 'pcg-parameters', summary: 'Rename a graph parameter through the native API while retaining its stable ID and native references.',

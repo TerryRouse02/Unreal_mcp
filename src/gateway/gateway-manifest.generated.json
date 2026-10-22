@@ -16120,21 +16120,26 @@
         "actorClass",
         "actorName",
         "assetPath",
+        "attributes",
         "classPath",
         "componentName",
         "componentPath",
         "container",
         "control",
         "createComponent",
+        "datasetId",
+        "domain",
         "edgeLimit",
         "edgeOffset",
         "edit",
         "expectedGraphRevision",
+        "fields",
         "filter",
         "force",
         "graphInstancePath",
         "graphPath",
         "gridSize",
+        "handleId",
         "includeSettings",
         "inputName",
         "limit",
@@ -16161,9 +16166,12 @@
         "sampleLimit",
         "save",
         "scope",
+        "scopePath",
         "settings",
         "settingsClass",
+        "sourceLimit",
         "sourceNodeId",
+        "sourceOffset",
         "sourcePin",
         "subgraphPath",
         "target",
@@ -16176,6 +16184,7 @@
         "typeObject",
         "value",
         "view",
+        "viewId",
         "x",
         "y"
       ],
@@ -16193,6 +16202,16 @@
           "assetPath": {
             "type": "string",
             "description": "Canonical /Game asset path."
+          },
+          "attributes": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "maxLength": 1023,
+              "description": "Nonempty reflected attribute name; the native column validator enforces nonemptiness."
+            },
+            "description": "Unique nonempty reflected attribute names; defaults to empty. The native handler enforces nonemptiness and rejects duplicates. Unsupported descriptors/columns/refusals do not count as supported selections. Unsafe Int64 values are decimal strings and soft references remain paths."
           },
           "classPath": {
             "type": "string",
@@ -16226,6 +16245,19 @@
             "type": "boolean",
             "description": "Create a new PCG component when no selector is supplied."
           },
+          "datasetId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Nonempty opaque dataset handle (1–64 characters) returned by list_pcg_data, bound to its owning caller and exact component; the native handler enforces nonemptiness."
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "Data",
+              "Elements"
+            ],
+            "description": "PCG data domain to inspect; defaults to Elements."
+          },
           "edgeLimit": {
             "type": "integer",
             "minimum": 1,
@@ -16254,6 +16286,24 @@
             "type": "string",
             "description": "Authored revision returned by get_pcg_graph; mandatory for batches."
           },
+          "fields": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "enum": [
+                "transform",
+                "density",
+                "seed",
+                "boundsMin",
+                "boundsMax",
+                "color",
+                "steepness",
+                "metadataEntry"
+              ]
+            },
+            "description": "Unique selected built-in fields; the native handler rejects duplicates; defaults to empty, but an explicit nonempty total selection across fields and attributes is required. Point transforms use native quaternion xyzw; Metadata Transform uses the declared native Euler-degrees conversion."
+          },
           "filter": {
             "type": "string",
             "description": "Case-insensitive settings class path filter."
@@ -16268,11 +16318,16 @@
           },
           "graphPath": {
             "type": "string",
-            "description": "Graph asset path for target=graph."
+            "description": "Exact already-loaded PCG graph asset path; this read does not load assets or classes."
           },
           "gridSize": {
             "type": "number",
             "description": "PCG partition grid cell size."
+          },
+          "handleId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Nonempty caller-owned process-local datasetId or viewId to release (1–64 characters); the native handler enforces nonemptiness. This does not clean native PCG resources or grant destructive scope."
           },
           "includeSettings": {
             "type": "boolean",
@@ -16285,8 +16340,8 @@
           "limit": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 100,
-            "description": "Maximum items, default 50."
+            "description": "Maximum items, default 50.",
+            "maximum": 100
           },
           "meshPath": {
             "type": "string",
@@ -16311,7 +16366,7 @@
           },
           "nodeId": {
             "type": "string",
-            "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
+            "description": "Exact backend node name returned by graph discovery/add. Titles, numeric indices and boundary aliases are refused."
           },
           "nodeKind": {
             "type": "string",
@@ -16427,9 +16482,15 @@
             "type": "string",
             "description": "Partition grid target scope: 'world' or 'component'."
           },
+          "scopePath": {
+            "type": "string",
+            "maxLength": 512,
+            "default": "",
+            "description": "Existing relative settings scope, defaults to settings itself. At most eight dotted property names traversing by-value structs or hard subobjects owned by these settings. Null/shared/CDO/class/soft references and arrays/indices are refused; no initialization or load."
+          },
           "settings": {
             "type": "object",
-            "description": "UPCGSettings property key-value pairs applied by reflection.",
+            "description": "UPCGSettings property paths with staged native preflight. On UE 5.7+, exact native static mesh spawners support MeshSelectorType (PCGMeshSelectorWeighted or PCGMeshSelectorByAttribute) and InstanceDataPackerType (PCGInstanceDataPackerByAttribute or null) before owned dependent paths. Existing parameter pointers are read-only; same types preserve parameters. Type changes require native PCG work idle and do not support Blueprint/custom classes. Packer AttributeSelectors accept native export text, e.g. PCGBegin($Density)PCGEnd. meshPath retains weighted single-entry reset semantics; a conflicting explicit selector type is refused.",
             "additionalProperties": true,
             "x-unreal-reflection-boundary": true
           },
@@ -16437,9 +16498,21 @@
             "type": "string",
             "description": "Concrete PCG settings class path or existing alias."
           },
+          "sourceLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 256,
+            "description": "Maximum source rows; defaults to 64."
+          },
           "sourceNodeId": {
             "type": "string",
             "description": "Exact stable model node identifier, or input/output; numeric indices are not accepted."
+          },
+          "sourceOffset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "First source row; defaults to 0."
           },
           "sourcePin": {
             "type": "string",
@@ -16523,14 +16596,25 @@
             "enum": [
               "node_types",
               "settings_schema",
+              "node_schema",
               "graph",
               "editor_graph",
               "validation",
               "parameters",
               "operation_status",
-              "component_results"
+              "component_results",
+              "data",
+              "data_schema",
+              "create_data_view",
+              "data_rows",
+              "release_data_view"
             ],
             "description": "Which inspect pcg variant to run."
+          },
+          "viewId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Nonempty opaque immutable data-view handle (1–64 characters) returned by create_pcg_data_view, bound to its owning caller and exact component; the native handler enforces nonemptiness and expired or invalidated handles deterministically return unavailable."
           },
           "x": {
             "type": "number",

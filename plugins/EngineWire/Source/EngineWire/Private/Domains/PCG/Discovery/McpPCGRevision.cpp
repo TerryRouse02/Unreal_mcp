@@ -18,9 +18,36 @@ const TArray<FName>& PCGRevisionExtraProperties()
 }
 namespace
 {
+TMap<FName, FString> PinPropertyTextOverrides(UPCGPin* Pin)
+{
+    if (!Pin) return {};
+    FPCGPinProperties Properties = Pin->Properties;
+    FString Text, TextKind;
+#if WITH_EDITORONLY_DATA
+    // Saving assigns localization IDs to generated tooltips, including their format arguments.
+    // Hash source text instead of those IDs or the current culture's translated display string.
+    TextKind = Properties.Tooltip.IsCultureInvariant() ? TEXT("invariant") : TEXT("source");
+    if (!Properties.Tooltip.IsFromStringTable())
+        Properties.Tooltip = FText::AsCultureInvariant(Properties.Tooltip.BuildSourceString());
+    else TextKind = TEXT("stringTable");
+#endif
+    FPCGPinProperties::StaticStruct()->ExportText(Text, &Properties, nullptr, Pin, PPF_None, nullptr);
+    Text += TEXT("\n$tooltip-kind:") + TextKind;
+    return {{FName(TEXT("Properties")), MoveTemp(Text)}};
+}
+
 TSharedPtr<FJsonObject> CaptureLocalRevision(UPCGGraph* Graph)
 {
     auto State = ReadPCGGraph(Graph, false);
+    // Public reads retain their native export. Only this private hash projection is normalized.
+    // Explicit NodeTitle and complete pin properties remain covered by reflected state below.
+    for (const auto& Value : State->GetArrayField(TEXT("nodes")))
+    {
+        const auto Node = Value->AsObject();
+        Node->RemoveField(TEXT("title"));
+        for (const TCHAR* Direction : {TEXT("inputPins"), TEXT("outputPins")})
+            for (const auto& Pin : Node->GetArrayField(Direction)) Pin->AsObject()->RemoveField(TEXT("properties"));
+    }
     auto Exact = MakeShared<FJsonObject>();
     TArray<UObject*> Objects;
     GetObjectsWithOuter(Graph, Objects, true);
@@ -31,7 +58,8 @@ TSharedPtr<FJsonObject> CaptureLocalRevision(UPCGGraph* Graph)
     for (UObject* Object : Objects)
     {
         if (!IsPCGAuthoredObject(Object, Graph) || (Editor && (Object == Editor || Object->IsIn(Editor)))) continue;
-        const FString Hash = McpPropertyReflection::FingerprintEditableProperties(Object, PCGRevisionExtraProperties());
+        const FString Hash = McpPropertyReflection::FingerprintEditableProperties(Object, PCGRevisionExtraProperties(),
+            PinPropertyTextOverrides(Cast<UPCGPin>(Object)));
         if (Hash.IsEmpty()) return nullptr;
         // Reinstancing a Blueprint class changes executable inputs even when its asset path stays the same.
         const FString Class = Object->GetClass()->GetPathName() + TEXT(":") + FString::FromInt(Object->GetClass()->GetUniqueID());

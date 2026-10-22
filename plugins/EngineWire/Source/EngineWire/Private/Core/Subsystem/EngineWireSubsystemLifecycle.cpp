@@ -15,6 +15,8 @@
 #include "Foundation/McpLiveStateRevisionTracker.h"
 #include "Foundation/McpReadinessState.h"
 #include "Misc/Parse.h"
+#include "Domains/PCG/Data/McpPCGDataViews.h"
+#include "Domains/PCG/Execution/McpPCGExecution.h"
 
 void UEngineWireSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -137,6 +139,10 @@ void UEngineWireSubsystem::Deinitialize()
     FMcpReadinessState::Get().Reset();
     McpWorldTickTimer::Stop();
     StopAcceptingAutomationRequests();
+#if MCP_HAS_PCG_EXECUTION
+    McpPCGHandlers::ShutdownPCGOperations(this);
+#endif
+    PCGDataViews.Reset();
     McpStopLiveStateTracking();
     // Enhanced Input holds live on the core ticker, which outlives this module.
     // Live Coding unloads the module routinely, so a hold left registered would
@@ -201,6 +207,9 @@ bool UEngineWireSubsystem::Tick(float DeltaTime)
     if (!GIsSavingPackage && !IsGarbageCollecting() && !IsAsyncLoading())
     {
         ProcessPendingAutomationRequests();
+#if MCP_HAS_PCG_EXECUTION
+        if (PCGDataViews.IsValid()) PCGDataViews->Purge();
+#endif
     }
     if (NativeTransport)
     {

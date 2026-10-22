@@ -1403,6 +1403,7 @@ export const CAPABILITY_COST_INDEX: Readonly<Record<string, string>> = {
   "manage_pcg::cleanup_pcg_component": "long-running|high",
   "manage_pcg::connect_pcg_pins": "interactive|medium",
   "manage_pcg::control_pcg_execution": "long-running|high",
+  "manage_pcg::create_pcg_data_view": "interactive|medium",
   "manage_pcg::create_pcg_graph": "interactive|medium",
   "manage_pcg::create_pcg_subgraph": "interactive|medium",
   "manage_pcg::disconnect_pcg_pins": "interactive|medium",
@@ -1411,15 +1412,20 @@ export const CAPABILITY_COST_INDEX: Readonly<Record<string, string>> = {
   "manage_pcg::execute_pcg_graph": "long-running|high",
   "manage_pcg::generate_pcg_graph": "long-running|high",
   "manage_pcg::get_pcg_component_results": "interactive|medium",
+  "manage_pcg::get_pcg_data_schema": "interactive|medium",
   "manage_pcg::get_pcg_editor_graph": "interactive|medium",
   "manage_pcg::get_pcg_graph": "interactive|medium",
+  "manage_pcg::get_pcg_node_schema": "interactive|medium",
   "manage_pcg::get_pcg_operation_status": "interactive|medium",
   "manage_pcg::get_pcg_parameters": "interactive|medium",
   "manage_pcg::get_pcg_settings_schema": "interactive|medium",
   "manage_pcg::inspect_pcg": "interactive|medium",
+  "manage_pcg::list_pcg_data": "interactive|medium",
   "manage_pcg::list_pcg_node_types": "interactive|medium",
   "manage_pcg::move_pcg_node": "interactive|medium",
   "manage_pcg::mutate_pcg_graph": "interactive|medium",
+  "manage_pcg::read_pcg_data": "interactive|medium",
+  "manage_pcg::release_pcg_data_view": "interactive|medium",
   "manage_pcg::remove_pcg_node": "interactive|medium",
   "manage_pcg::remove_pcg_parameter": "interactive|medium",
   "manage_pcg::rename_pcg_parameter": "interactive|medium",
@@ -1610,4 +1616,4 @@ export const CAPABILITY_COST_INDEX: Readonly<Record<string, string>> = {
   "system_control::write_snapshot": "interactive|medium"
 };
 
-export const CAPABILITY_COST_INDEX_KEY_COUNT = 1597;
+export const CAPABILITY_COST_INDEX_KEY_COUNT = 1603;
